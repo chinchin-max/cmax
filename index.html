@@ -79,7 +79,7 @@
       border: 0;
     }
 
-    /* ===== Mobile controls ===== */
+    /* ===== Mobile controls (เข้าถึงได้แบบ NVDA/TalkBack) ===== */
     #mobileControls {
       display: none;
       margin-top: 12px;
@@ -93,59 +93,40 @@
     }
     .mc-row {
       display: flex;
-      gap: 10px;
-      justify-content: space-between;
-      align-items: stretch;
+      flex-direction: column;
+      gap: 12px;
     }
-    .dpad-wrap {
-      position: relative;
-      width: 168px;
-      height: 168px;
-      flex-shrink: 0;
-    }
-    .dpad-base {
+    /* D-pad แบบปุ่ม 4 ทิศ — ใช้กับ TalkBack/VoiceOver ได้ */
+    .dpad-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: 1fr 1fr 1fr;
+      gap: 6px;
+      max-width: 220px;
+      margin: 0 auto;
       width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      background: #1e293b;
-      border: 3px solid #475569;
-      position: relative;
-      touch-action: none;
     }
-    .dpad-knob {
-      position: absolute;
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      background: #3b82f6;
-      border: 2px solid #93c5fd;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-      transition: background 0.1s;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    .dpad-grid .mc-dir {
+      min-height: 56px;
+      font-size: 1.1rem;
     }
-    .dpad-knob.active {
-      background: #60a5fa;
-    }
-    .dpad-label {
-      position: absolute;
-      font-size: 0.7rem;
+    .dpad-grid .dir-up    { grid-column: 2; grid-row: 1; }
+    .dpad-grid .dir-left  { grid-column: 1; grid-row: 2; }
+    .dpad-grid .dir-right { grid-column: 3; grid-row: 2; }
+    .dpad-grid .dir-down  { grid-column: 2; grid-row: 3; }
+    .dpad-grid .dir-center {
+      grid-column: 2; grid-row: 2;
+      background: #0f172a;
+      border-color: #334155;
       color: #64748b;
+      font-size: 0.75rem;
       pointer-events: none;
     }
-    .dpad-label.up { top: 8px; left: 50%; transform: translateX(-50%); }
-    .dpad-label.down { bottom: 8px; left: 50%; transform: translateX(-50%); }
-    .dpad-label.left { left: 10px; top: 50%; transform: translateY(-50%); }
-    .dpad-label.right { right: 10px; top: 50%; transform: translateY(-50%); }
 
     .action-btns {
-      flex: 1;
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 8px;
-      align-content: center;
     }
     .mc-btn {
       background: #1e293b;
@@ -157,27 +138,30 @@
       font-weight: 700;
       cursor: pointer;
       touch-action: manipulation;
-      min-height: 48px;
+      min-height: 52px;
       -webkit-tap-highlight-color: transparent;
     }
-    .mc-btn:active, .mc-btn.pressed {
+    .mc-btn:active, .mc-btn.pressed, .mc-btn:focus {
       background: #334155;
       border-color: #60a5fa;
       color: #93c5fd;
+      outline: 2px solid #93c5fd;
+      outline-offset: 2px;
     }
     .mc-btn.primary {
       background: #1e3a5f;
       border-color: #3b82f6;
     }
-    .mc-btn.primary:active, .mc-btn.primary.pressed {
+    .mc-btn.primary:active, .mc-btn.primary.pressed, .mc-btn.primary:focus {
       background: #2563eb;
       border-color: #93c5fd;
     }
     .mc-hint {
       text-align: center;
-      font-size: 0.72rem;
-      color: #64748b;
-      margin-top: 6px;
+      font-size: 0.78rem;
+      color: #94a3b8;
+      margin-top: 4px;
+      line-height: 1.45;
     }
 
     /* Chat panel mobile tweak */
@@ -190,8 +174,9 @@
       width: 100%;
     }
 
-    @media (min-width: 700px) {
-      #mobileControls { display: none !important; }
+    /* บนจอใหญ่ซ่อนแผงมือถือ — ยกเว้นมีคลาส force-show */
+    @media (min-width: 900px) {
+      #mobileControls:not(.force-show) { display: none !important; }
     }
 
     /* ===== หน้าจอเริ่มเกม ===== */
@@ -269,28 +254,26 @@
     </div>
   </div>
 
-  <!-- Mobile virtual controls -->
-  <div id="mobileControls" style="display:none;">
+  <!-- Mobile controls — ปุ่มทิศทาง + คำสั่ง อ่านด้วย TalkBack/VoiceOver ได้เหมือน NVDA -->
+  <div id="mobileControls" style="display:none;" role="group" aria-label="แผงควบคุมเกมมือถือ">
     <div class="mc-row">
-      <div class="dpad-wrap" id="dpadWrap">
-        <div class="dpad-base" id="dpadBase">
-          <span class="dpad-label up">▲</span>
-          <span class="dpad-label down">▼</span>
-          <span class="dpad-label left">◀</span>
-          <span class="dpad-label right">▶</span>
-          <div class="dpad-knob" id="dpadKnob"></div>
-        </div>
+      <div class="dpad-grid" role="group" aria-label="ปุ่มเดิน">
+        <button type="button" class="mc-btn mc-dir dir-up" data-dir="up" aria-label="เดินขึ้น กดค้างเพื่อเดินต่อ">▲ ขึ้น</button>
+        <button type="button" class="mc-btn mc-dir dir-left" data-dir="left" aria-label="เดินซ้าย กดค้างเพื่อเดินต่อ">◀ ซ้าย</button>
+        <div class="mc-btn dir-center" aria-hidden="true">เดิน</div>
+        <button type="button" class="mc-btn mc-dir dir-right" data-dir="right" aria-label="เดินขวา กดค้างเพื่อเดินต่อ">ขวา ▶</button>
+        <button type="button" class="mc-btn mc-dir dir-down" data-dir="down" aria-label="เดินลง กดค้างเพื่อเดินต่อ">▼ ลง</button>
       </div>
-      <div class="action-btns">
-        <button type="button" class="mc-btn primary" data-action="enter">Enter<br>ยืนยัน</button>
-        <button type="button" class="mc-btn" data-action="esc">Esc<br>กลับ</button>
-        <button type="button" class="mc-btn" data-action="c">C<br>ค้นหามอน</button>
-        <button type="button" class="mc-btn" data-action="i">I<br>คลัง</button>
-        <button type="button" class="mc-btn" data-action="b">B<br>พิกัด</button>
-        <button type="button" class="mc-btn" data-action="m">M<br>ช่วยเหลือ</button>
+      <div class="action-btns" role="group" aria-label="ปุ่มคำสั่ง">
+        <button type="button" class="mc-btn primary" data-action="enter" aria-label="ยืนยัน หรือเปิดร้าน">ยืนยัน</button>
+        <button type="button" class="mc-btn" data-action="esc" aria-label="กลับ หรือหนี">กลับ</button>
+        <button type="button" class="mc-btn" data-action="c" aria-label="ค้นหาสัตว์ป่า">ค้นหามอน</button>
+        <button type="button" class="mc-btn" data-action="i" aria-label="เปิดคลังสัตว์เลี้ยง">คลัง</button>
+        <button type="button" class="mc-btn" data-action="b" aria-label="เช็คพิกัดปัจจุบัน">พิกัด</button>
+        <button type="button" class="mc-btn" data-action="m" aria-label="เมนูช่วยเหลือ">ช่วยเหลือ</button>
       </div>
     </div>
-    <div class="mc-hint">แตะค้างบนจอยสติ๊กเพื่อเดินทิศทางนั้น · ปล่อย = หยุด</div>
+    <div class="mc-hint" id="mobileHint">กดค้างปุ่มทิศทางเพื่อเดิน · ปุ่มคำสั่งด้านล่าง · ข้อความเกมอ่านอัตโนมัติ</div>
   </div>
 
   <div id="srAnnouncer" class="sr-only" aria-live="assertive"></div>
@@ -1503,13 +1486,10 @@ function handleEsc() {
 }
 
 // ============================================================
-// Mobile virtual joystick + action buttons
+// Mobile accessible controls (TalkBack / VoiceOver เหมือน NVDA)
 // ============================================================
-let joyActive = false;
-let joyDir = { dr: 0, dc: 0 };
-let joyInterval = null;
-const JOY_DEADZONE = 18;
-const JOY_MAX = 52;
+let dirHold = null; // { dr, dc }
+let dirInterval = null;
 
 function isTouchDevice() {
   return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
@@ -1518,12 +1498,13 @@ function isTouchDevice() {
 function showMobileControls() {
   const el = document.getElementById('mobileControls');
   if (!el) return;
-  if (isTouchDevice() || window.innerWidth < 700) {
+  // แสดงบนมือถือเสมอ และบนจอแคบ — เพื่อให้ TalkBack ใช้ปุ่มได้
+  if (isTouchDevice() || window.innerWidth < 900) {
     el.style.display = 'block';
     el.classList.add('visible');
     const help = document.getElementById('helpText');
     if (help) {
-      help.textContent = 'แตะค้างจอยสติ๊ก = เดิน · ปุ่มด้านล่าง = คำสั่ง · / = แชท';
+      help.textContent = 'ปุ่มขึ้นลงซ้ายขวา = เดิน (กดค้างได้) · ยืนยัน/กลับ/ค้นหามอน/คลัง';
     }
   }
 }
@@ -1564,134 +1545,81 @@ function lockFocusOnInteraction(e) {
   focusGame();
 }
 
-function setKnobPosition(dx, dy) {
-  const knob = document.getElementById('dpadKnob');
-  if (!knob) return;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  let nx = dx, ny = dy;
-  if (dist > JOY_MAX) {
-    nx = (dx / dist) * JOY_MAX;
-    ny = (dy / dist) * JOY_MAX;
-  }
-  knob.style.transform = 'translate(calc(-50% + ' + nx + 'px), calc(-50% + ' + ny + 'px))';
-  if (dist > JOY_DEADZONE) knob.classList.add('active');
-  else knob.classList.remove('active');
+function dirFromName(name) {
+  if (name === 'up') return { dr: -1, dc: 0 };
+  if (name === 'down') return { dr: 1, dc: 0 };
+  if (name === 'left') return { dr: 0, dc: -1 };
+  if (name === 'right') return { dr: 0, dc: 1 };
+  return { dr: 0, dc: 0 };
 }
 
-function resetKnob() {
-  const knob = document.getElementById('dpadKnob');
-  if (!knob) return;
-  knob.style.transform = 'translate(-50%, -50%)';
-  knob.classList.remove('active');
-}
-
-function updateJoyDirection(clientX, clientY) {
-  const base = document.getElementById('dpadBase');
-  if (!base) return;
-  const rect = base.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2;
-  const cy = rect.top + rect.height / 2;
-  const dx = clientX - cx;
-  const dy = clientY - cy;
-  setKnobPosition(dx, dy);
-
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist < JOY_DEADZONE) {
-    joyDir = { dr: 0, dc: 0 };
-    return;
-  }
-  // ใช้ทิศหลัก (4 ทิศ) ตามมุม
-  const angle = Math.atan2(dy, dx); // -PI..PI, 0 = ขวา
-  const deg = angle * 180 / Math.PI;
-  if (deg >= -45 && deg < 45) {
-    joyDir = { dr: 0, dc: 1 };   // ขวา
-  } else if (deg >= 45 && deg < 135) {
-    joyDir = { dr: 1, dc: 0 };   // ลง
-  } else if (deg >= -135 && deg < -45) {
-    joyDir = { dr: -1, dc: 0 };  // ขึ้น
-  } else {
-    joyDir = { dr: 0, dc: -1 };  // ซ้าย
+function applyDirection(dr, dc) {
+  if (mode === 'explore') {
+    move(dr, dc);
+  } else if (mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' || mode === 'battle' || mode === 'inventory' || mode === 'inventory_action') {
+    if (dr === -1) menuMove(-1);
+    else if (dr === 1) menuMove(1);
   }
 }
 
-function startJoyLoop() {
-  if (joyInterval) return;
-  joyInterval = setInterval(function() {
-    if (!joyActive) return;
-    if (mode === 'explore') {
-      if (joyDir.dr !== 0 || joyDir.dc !== 0) {
-        move(joyDir.dr, joyDir.dc);
-      }
-    } else if (mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' || mode === 'battle' || mode === 'inventory' || mode === 'inventory_action') {
-      // ในเมนู: ขึ้น/ลง ใช้เลือกเมนู
-      if (joyDir.dr === -1) menuMove(-1);
-      else if (joyDir.dr === 1) menuMove(1);
-    }
+function startDirHold(dr, dc) {
+  dirHold = { dr: dr, dc: dc };
+  applyDirection(dr, dc); // กดครั้งแรกทำทันที
+  if (dirInterval) clearInterval(dirInterval);
+  dirInterval = setInterval(function() {
+    if (!dirHold) return;
+    applyDirection(dirHold.dr, dirHold.dc);
   }, MOVE_COOLDOWN);
 }
 
-function stopJoyLoop() {
-  if (joyInterval) {
-    clearInterval(joyInterval);
-    joyInterval = null;
+function stopDirHold() {
+  dirHold = null;
+  if (dirInterval) {
+    clearInterval(dirInterval);
+    dirInterval = null;
   }
-  joyDir = { dr: 0, dc: 0 };
-  joyActive = false;
-  resetKnob();
 }
 
+// ปุ่มทิศทาง 4 ทิศ — กดครั้งเดียวหรือกดค้าง (รองรับ TalkBack)
 function setupJoystick() {
-  const base = document.getElementById('dpadBase');
-  if (!base) return;
+  document.querySelectorAll('.mc-dir[data-dir]').forEach(function(btn) {
+    const dir = dirFromName(btn.getAttribute('data-dir'));
 
-  function onStart(e) {
-    e.preventDefault();
-    startBGM();
-    focusGame();
-    joyActive = true;
-    const t = e.touches ? e.touches[0] : e;
-    updateJoyDirection(t.clientX, t.clientY);
-    startJoyLoop();
-  }
-  function onMove(e) {
-    if (!joyActive) return;
-    e.preventDefault();
-    const t = e.touches ? e.touches[0] : e;
-    updateJoyDirection(t.clientX, t.clientY);
-  }
-  function onEnd(e) {
-    if (!joyActive) return;
-    e.preventDefault();
-    stopJoyLoop();
-  }
-
-  base.addEventListener('touchstart', onStart, { passive: false });
-  base.addEventListener('touchmove', onMove, { passive: false });
-  base.addEventListener('touchend', onEnd, { passive: false });
-  base.addEventListener('touchcancel', onEnd, { passive: false });
-
-  // รองรับเมาส์ (ทดสอบบนเดสก์ท็อป)
-  base.addEventListener('mousedown', function(e) {
-    onStart(e);
-    function onMouseMove(ev) { onMove(ev); }
-    function onMouseUp(ev) {
-      onEnd(ev);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
+    function onDown(e) {
+      // ไม่ preventDefault ทุกกรณี — ให้ TalkBack เปิดใช้งานปุ่มได้
+      if (e.type === 'touchstart') e.preventDefault();
+      startBGM();
+      btn.classList.add('pressed');
+      startDirHold(dir.dr, dir.dc);
     }
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    function onUp(e) {
+      btn.classList.remove('pressed');
+      stopDirHold();
+    }
+    function onClick(e) {
+      // TalkBack มักส่ง click แทน touch — เดินทีละก้าว
+      e.preventDefault();
+      startBGM();
+      applyDirection(dir.dr, dir.dc);
+    }
+
+    btn.addEventListener('touchstart', onDown, { passive: false });
+    btn.addEventListener('touchend', onUp);
+    btn.addEventListener('touchcancel', onUp);
+    btn.addEventListener('mousedown', onDown);
+    btn.addEventListener('mouseup', onUp);
+    btn.addEventListener('mouseleave', onUp);
+    btn.addEventListener('click', onClick);
   });
 }
 
 function setupActionButtons() {
-  document.querySelectorAll('.mc-btn').forEach(function(btn) {
+  document.querySelectorAll('.mc-btn[data-action]').forEach(function(btn) {
     const action = btn.getAttribute('data-action');
     function fire(e) {
       e.preventDefault();
       e.stopPropagation();
       startBGM();
-      focusGame();
       btn.classList.add('pressed');
       setTimeout(function() { btn.classList.remove('pressed'); }, 120);
 
@@ -1711,25 +1639,32 @@ function setupActionButtons() {
         if (mode === 'explore') {
           announce(
             "=== เมนูช่วยเหลือ ===\n\n" +
-            "มือถือ: แตะค้างจอยสติ๊กเพื่อเดิน\n" +
-            "ขึ้น/ลง/ซ้าย/ขวา ตามทิศที่กดค้าง\n\n" +
-            "Enter = เปิดร้าน / ยืนยันเมนู\n" +
-            "Esc = กลับ / หนี\n" +
-            "C = ค้นหาสัตว์ป่า (นอกเมือง)\n" +
-            "I = คลังสัตว์เลี้ยง\n" +
-            "B = เช็คพิกัด\n\n" +
-            "ในเมือง (เดินไปยืนแล้วกด Enter):\n" +
-            "• แถว 49 หลัก 51 = ร้านลูกบอล\n" +
-            "• แถว 51 หลัก 49 = ร้านอาหาร\n" +
-            "• แถว 53 หลัก 51 = ร้านหินวิวัฒนาการ\n" +
-            "• แถว 51 หลัก 51 = ลานประลอง\n" +
-            "• แถว 51 หลัก 53 = ศูนย์ข้อมูล"
+            "มือถือ + โปรแกรมอ่านจอ:\n" +
+            "ปุ่ม ขึ้น ลง ซ้าย ขวา = เดิน (กดค้างได้)\n" +
+            "ในเมนู: ขึ้น/ลง = เลือกรายการ\n\n" +
+            "ยืนยัน = เปิดร้าน / เลือกเมนู\n" +
+            "กลับ = ยกเลิก / หนี\n" +
+            "ค้นหามอน = หาสัตว์ป่า (นอกเมือง)\n" +
+            "คลัง = ดูสัตว์เลี้ยง\n" +
+            "พิกัด = ดูตำแหน่งปัจจุบัน\n\n" +
+            "ในเมือง (เดินไปยืนแล้วกดยืนยัน):\n" +
+            "แถว 49 หลัก 51 = ร้านลูกบอล\n" +
+            "แถว 51 หลัก 49 = ร้านอาหาร\n" +
+            "แถว 53 หลัก 51 = ร้านหิน\n" +
+            "แถว 51 หลัก 51 = ลานประลอง\n" +
+            "แถว 51 หลัก 53 = ศูนย์ข้อมูล"
           );
         }
       }
+      // หลังใช้คำสั่ง ให้โฟกัสกลับพื้นที่เกม (role=application)
+      setTimeout(focusGame, 30);
     }
-    btn.addEventListener('touchstart', fire, { passive: false });
     btn.addEventListener('click', fire);
+    btn.addEventListener('touchend', function(e) {
+      // กัน double-fire กับ click บนบางเครื่อง
+      if (e.cancelable) e.preventDefault();
+      fire(e);
+    }, { passive: false });
   });
 }
 
