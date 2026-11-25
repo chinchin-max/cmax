@@ -286,10 +286,10 @@ const size = 100;
 let r = 49;
 let c = 49;
 let lastMoveTime = 0;
-const MOVE_COOLDOWN = 450; // มิลลิวินาที (ยิ่งมากยิ่งเดินช้า)
+const MOVE_COOLDOWN = 500; // มิลลิวินาที (ยิ่งมากยิ่งเดินช้า)
 
-const bgm = new Audio('forest_ambient.wav');
-bgm.loop = true; bgm.volume = 0.40;
+const bgm = new Audio('music-bg.wav');
+bgm.loop = true; bgm.volume = 0.50;
 
 const sounds = {
   grass:    [new Audio('step_grass1.wav'), new Audio('step_grass2.wav'), new Audio('step_grass3.wav')],
@@ -566,7 +566,7 @@ function move(dr, dc) {
     if (isCityGate(r, c)) {
       announce("คุณกำลังผ่านประตูเมืองหลวงไตรภูมิ | โซน: " + zone);
     } else {
-      announce("เข้าสู่ " + zone);
+      announce(เมือง);
     }
   } else {
     playEdgeSound();
@@ -578,7 +578,7 @@ function checkCurrentPosition() {
   const zone = getZoneName(r, c);
   const shop = getShopAt(r, c);
   const catchable = getCatchZone(zone) ? "มอนโผล่ได้ตอนเดิน / กด C ค้นหา" : "เขตปลอดภัย (มีร้าน + ลานประลอง)";
-  let text = "พิกัด " + (r+1) + ", " + (c+1) + "\nโซน: " + zone + "\nสถานะ: " + catchable + "\nชัยชนะลานประลอง: " + (playerData.arenaWins || 0);
+  let text = "" + (r+1) + ", " + (c+1) + zone + (playerData.arenaWins || 0);
   if (shop) text += "\n\nคุณยืนอยู่หน้า: " + shop.name + "\nกด Enter เพื่อเปิด";
   announce(text);
 }
