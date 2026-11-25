@@ -2,24 +2,40 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>ไตรภูมิ Monster Quest</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+      overscroll-behavior: none;
+    }
     body {
       background: #0b0f19;
       color: #e5e7eb;
       font-family: 'Segoe UI', Tahoma, sans-serif;
       min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 16px;
+      padding: 12px;
+      padding-bottom: 8px;
     }
     #gameBody {
       outline: none;
       width: 100%;
       max-width: 640px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    #gameBody:focus {
+      outline: 2px solid #3b82f6;
+      outline-offset: 2px;
+      border-radius: 4px;
     }
     .status {
       display: flex;
@@ -30,7 +46,7 @@
       border: 2px solid #374151;
       border-radius: 8px;
       padding: 10px 14px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       font-weight: 700;
       font-size: 0.92rem;
     }
@@ -39,18 +55,21 @@
       background: #111827;
       border: 2px solid #374151;
       border-radius: 8px;
-      padding: 18px;
-      min-height: 210px;
-      font-size: 1.05rem;
-      line-height: 1.65;
+      padding: 16px;
+      min-height: 180px;
+      max-height: 42vh;
+      overflow-y: auto;
+      font-size: 1.02rem;
+      line-height: 1.6;
       white-space: pre-wrap;
+      flex-shrink: 0;
     }
     .help {
-      margin-top: 14px;
-      font-size: 0.84rem;
+      margin-top: 10px;
+      font-size: 0.8rem;
       color: #9ca3af;
       text-align: center;
-      line-height: 1.55;
+      line-height: 1.5;
     }
     .sr-only {
       position: absolute;
@@ -59,30 +78,221 @@
       overflow: hidden; clip: rect(0,0,0,0);
       border: 0;
     }
+
+    /* ===== Mobile controls ===== */
+    #mobileControls {
+      display: none;
+      margin-top: 12px;
+      width: 100%;
+      max-width: 640px;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #mobileControls.visible {
+      display: block;
+    }
+    .mc-row {
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: stretch;
+    }
+    .dpad-wrap {
+      position: relative;
+      width: 168px;
+      height: 168px;
+      flex-shrink: 0;
+    }
+    .dpad-base {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: #1e293b;
+      border: 3px solid #475569;
+      position: relative;
+      touch-action: none;
+    }
+    .dpad-knob {
+      position: absolute;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #3b82f6;
+      border: 2px solid #93c5fd;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      transition: background 0.1s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .dpad-knob.active {
+      background: #60a5fa;
+    }
+    .dpad-label {
+      position: absolute;
+      font-size: 0.7rem;
+      color: #64748b;
+      pointer-events: none;
+    }
+    .dpad-label.up { top: 8px; left: 50%; transform: translateX(-50%); }
+    .dpad-label.down { bottom: 8px; left: 50%; transform: translateX(-50%); }
+    .dpad-label.left { left: 10px; top: 50%; transform: translateY(-50%); }
+    .dpad-label.right { right: 10px; top: 50%; transform: translateY(-50%); }
+
+    .action-btns {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      align-content: center;
+    }
+    .mc-btn {
+      background: #1e293b;
+      border: 2px solid #475569;
+      color: #e2e8f0;
+      border-radius: 12px;
+      padding: 12px 6px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      touch-action: manipulation;
+      min-height: 48px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mc-btn:active, .mc-btn.pressed {
+      background: #334155;
+      border-color: #60a5fa;
+      color: #93c5fd;
+    }
+    .mc-btn.primary {
+      background: #1e3a5f;
+      border-color: #3b82f6;
+    }
+    .mc-btn.primary:active, .mc-btn.primary.pressed {
+      background: #2563eb;
+      border-color: #93c5fd;
+    }
+    .mc-hint {
+      text-align: center;
+      font-size: 0.72rem;
+      color: #64748b;
+      margin-top: 6px;
+    }
+
+    /* Chat panel mobile tweak */
+    #chatPanel {
+      margin-top: 10px;
+      background: #0f172a;
+      border: 2px solid #334155;
+      border-radius: 8px;
+      padding: 10px;
+      width: 100%;
+    }
+
+    @media (min-width: 700px) {
+      #mobileControls { display: none !important; }
+    }
+
+    /* ===== หน้าจอเริ่มเกม ===== */
+    #startScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #0b0f19;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+    #startScreen.hidden {
+      display: none;
+    }
+    #startScreen h1 {
+      font-size: 1.6rem;
+      color: #fbbf24;
+      margin-bottom: 8px;
+    }
+    #startScreen p {
+      color: #94a3b8;
+      font-size: 0.95rem;
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+    #startBtn {
+      background: linear-gradient(180deg, #3b82f6, #1d4ed8);
+      border: 2px solid #93c5fd;
+      color: #fff;
+      font-size: 1.35rem;
+      font-weight: 800;
+      padding: 18px 48px;
+      border-radius: 16px;
+      cursor: pointer;
+      box-shadow: 0 6px 24px rgba(37, 99, 235, 0.45);
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      min-width: 220px;
+    }
+    #startBtn:active {
+      transform: scale(0.97);
+      background: #2563eb;
+    }
   </style>
 </head>
 <body>
-  <div id="gameBody" tabindex="0">
-    <div class="status">
+  <!-- หน้าจอเริ่มเกม (ซ่อนอัตโนมัติหลังโหลด — role=application จะเข้าโหมดโฟกัสเอง) -->
+  <div id="startScreen" class="hidden" aria-hidden="true">
+    <h1>ไตรภูมิ Monster Quest</h1>
+    <p>กำลังเข้าสู่เกม...</p>
+    <button type="button" id="startBtn">เริ่มเกม</button>
+  </div>
+
+  <div id="gameBody" tabindex="0" role="application" aria-label="ไตรภูมิ Monster Quest เกมสำรวจและจับมอนสเตอร์ กดลูกศรเพื่อเดิน Enter เพื่อยืนยัน">
+    <div class="status" aria-live="polite">
       <span>บอล: <span id="ball-count">0</span> | อาหาร: <span id="food-count">0</span> | หิน: <span id="evo-count">0</span></span>
       <span class="money">เหรียญ: <span id="money">1,000</span> G</span>
     </div>
-    <div id="display">กำลังโหลดเกม...</div>
-        <div id="chatPanel" style="display:block; margin-top:10px; background:#0f172a; border:2px solid #334155; border-radius:8px; padding:12px; width:100%;">
-      <div style="font-weight:700; margin-bottom:8px; color:#93c5fd;">แชทโลกไตรภูมิ</div>
-      <div id="chatLog" style="height:120px; overflow-y:auto; background:#020617; border-radius:6px; padding:8px; font-size:0.9rem; line-height:1.5; margin-bottom:8px; white-space:pre-wrap;"></div>
-      <input id="chatInput" type="text" placeholder="กด / เพื่อพิมพ์แชท..." maxlength="120"
-        style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid #475569; background:#1e293b; color:#e2e8f0; outline:none; box-sizing:border-box;" />
-      <div style="margin-top:6px; font-size:0.78rem; color:#94a3b8;">
-        [ ] = อ่านแชท &nbsp;|&nbsp; / = พิมพ์แชท &nbsp;|&nbsp; Enter = ส่งแล้วเล่นต่อ
+    <div id="display" role="status" aria-live="assertive" aria-atomic="true">กำลังเริ่มเกม...</div>
+    <div id="chatPanel" style="display:none;">
+      <div style="font-weight:700; margin-bottom:8px; color:#93c5fd; display:flex; justify-content:space-between; align-items:center;">
+        <span>แชทโลกไตรภูมิ</span>
+        <button type="button" id="chatCloseBtn" style="background:#334155; border:none; color:#e2e8f0; border-radius:6px; padding:4px 10px; font-size:0.8rem; cursor:pointer;">ปิด</button>
       </div>
+      <div id="chatLog" style="height:100px; overflow-y:auto; background:#020617; border-radius:6px; padding:8px; font-size:0.88rem; line-height:1.5; margin-bottom:8px; white-space:pre-wrap;"></div>
+      <input id="chatInput" type="text" placeholder="พิมพ์แชทแล้วกด Enter..." maxlength="120"
+        style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid #475569; background:#1e293b; color:#e2e8f0; outline:none; box-sizing:border-box; font-size:16px;" />
     </div>
-    <div class="help">
-      ลูกศร / WASD = เดิน &nbsp;|&nbsp; Enter = เปิดร้าน / ยืนยันเมนู<br>
-      / = พิมพ์แชท &nbsp;|&nbsp; [ ] = อ่านแชท &nbsp;|&nbsp; C = ค้นหามอน &nbsp;|&nbsp; I = คลัง<br>
-      I = คลัง &nbsp;|&nbsp; B = เช็คพิกัด &nbsp;|&nbsp; M = เมนูช่วยเหลือ
+    <div class="help" id="helpText">
+      ลูกศร / WASD = เดิน · Enter = ยืนยัน · C = ค้นหามอน · I = คลัง · M = ช่วยเหลือ · / = แชท
     </div>
   </div>
+
+  <!-- Mobile virtual controls -->
+  <div id="mobileControls" style="display:none;">
+    <div class="mc-row">
+      <div class="dpad-wrap" id="dpadWrap">
+        <div class="dpad-base" id="dpadBase">
+          <span class="dpad-label up">▲</span>
+          <span class="dpad-label down">▼</span>
+          <span class="dpad-label left">◀</span>
+          <span class="dpad-label right">▶</span>
+          <div class="dpad-knob" id="dpadKnob"></div>
+        </div>
+      </div>
+      <div class="action-btns">
+        <button type="button" class="mc-btn primary" data-action="enter">Enter<br>ยืนยัน</button>
+        <button type="button" class="mc-btn" data-action="esc">Esc<br>กลับ</button>
+        <button type="button" class="mc-btn" data-action="c">C<br>ค้นหามอน</button>
+        <button type="button" class="mc-btn" data-action="i">I<br>คลัง</button>
+        <button type="button" class="mc-btn" data-action="b">B<br>พิกัด</button>
+        <button type="button" class="mc-btn" data-action="m">M<br>ช่วยเหลือ</button>
+      </div>
+    </div>
+    <div class="mc-hint">แตะค้างบนจอยสติ๊กเพื่อเดินทิศทางนั้น · ปล่อย = หยุด</div>
+  </div>
+
   <div id="srAnnouncer" class="sr-only" aria-live="assertive"></div>
 
 <script>
@@ -182,8 +392,14 @@ function getShopAt(row, col) {
 }
 
 function announce(text) {
-  document.getElementById('display').innerText = text;
-  document.getElementById('srAnnouncer').innerText = text;
+  const disp = document.getElementById('display');
+  const sr = document.getElementById('srAnnouncer');
+  if (disp) disp.innerText = text;
+  // เคลียร์แล้วใส่ใหม่ เพื่อให้ screen reader อ่านซ้ำได้
+  if (sr) {
+    sr.innerText = '';
+    setTimeout(function() { sr.innerText = text; }, 20);
+  }
 }
 
 // ============================================================
@@ -327,7 +543,7 @@ function updateStatusBar() {
 function move(dr, dc) {
   if (mode !== 'explore') return;
   const now = Date.now();
-  if (now - lastMoveTime < MOVE_COOLDOWN) return; // ยังเดินไม่ได้ รอ cooldow
+  if (now - lastMoveTime < MOVE_COOLDOWN) return;
   lastMoveTime = now;
   const newR = r + dr;
   const newC = c + dc;
@@ -360,7 +576,7 @@ function move(dr, dc) {
     // มอนโผล่เองตอนเดินนอกเมือง (โอกาส ~18%)
     const catchZone = getCatchZone(zone);
     if (catchZone && Math.random() < 0.18) {
-      startSearch(true); // true = จาก random encounter
+      startSearch(true);
       return;
     }
 
@@ -460,7 +676,6 @@ function renderMenu(title, hint) {
 function menuMove(delta) {
   if (!menuOptions.length) return;
   menuCursor = (menuCursor + delta + menuOptions.length) % menuOptions.length;
-  // re-announce based on mode
   if (mode === 'shop') {
     renderMenu(menuTitle || 'ร้านค้า', 'ลูกศรขึ้น/ลง เลือก | Enter ซื้อ | Esc กลับ');
   } else if (mode === 'inventory') {
@@ -772,7 +987,7 @@ function throwBallInBattle(type) {
 }
 
 // ============================================================
-// 7. ลานประลอง (นอกเมือง) ปุ่ม R
+// 7. ลานประลอง
 // ============================================================
 function startArenaFromCity() {
   if (petInventory.length === 0) {
@@ -789,7 +1004,6 @@ function startArenaFromCity() {
   renderPetSelectMenu(menuTitle);
 }
 
-// เหลือไว้เผื่อเรียกจากที่อื่น (ไม่ใช้กด R นอกเมืองแล้ว)
 function showArena() {
   const shop = getShopAt(r, c);
   if (shop && shop.id === 'arena') {
@@ -1036,12 +1250,35 @@ function renderChatLog() {
 }
 function focusGame() {
   const inp = document.getElementById('chatInput');
+  if (inp && document.activeElement === inp) return; // กำลังพิมพ์แชท — ไม่แย่งโฟกัส
   if (inp) inp.blur();
   const body = document.getElementById('gameBody');
-  if (body) body.focus();
+  if (body) {
+    // role="application" ทำให้ NVDA/JAWS เข้าโหมดโฟกัสอัตโนมัติ ไม่ต้องกด Insert+Space
+    if (!body.getAttribute('role')) body.setAttribute('role', 'application');
+    body.setAttribute('tabindex', '0');
+    try {
+      body.focus({ preventScroll: true });
+    } catch (e) {
+      body.focus();
+    }
+  }
+}
+
+function showChatPanel() {
+  const panel = document.getElementById('chatPanel');
+  if (panel) panel.style.display = 'block';
+  renderChatLog();
+}
+
+function hideChatPanel() {
+  const panel = document.getElementById('chatPanel');
+  if (panel) panel.style.display = 'none';
+  focusGame();
 }
 function chatReadPrev() {
   if (!chatMessages.length) return;
+  showChatPanel();
   if (chatReadIndex < 0) chatReadIndex = chatMessages.length - 1;
   else chatReadIndex = Math.max(0, chatReadIndex - 1);
   renderChatLog();
@@ -1050,6 +1287,7 @@ function chatReadPrev() {
 }
 function chatReadNext() {
   if (!chatMessages.length) return;
+  showChatPanel();
   if (chatReadIndex < 0) chatReadIndex = 0;
   else chatReadIndex = Math.min(chatMessages.length - 1, chatReadIndex + 1);
   renderChatLog();
@@ -1059,6 +1297,7 @@ function chatReadNext() {
 function startChatType() {
   const inp = document.getElementById('chatInput');
   if (!inp) return;
+  showChatPanel();
   if (chatReadIndex >= 0 && chatMessages[chatReadIndex]) {
     const m = chatMessages[chatReadIndex];
     chatReplyTo = m.from + ': ' + m.text.slice(0, 28);
@@ -1069,14 +1308,14 @@ function startChatType() {
     inp.placeholder = 'พิมพ์ข้อความแล้วกด Enter...';
     announce('พิมพ์แชท — พิมพ์แล้วกด Enter เพื่อส่ง\n(Esc ยกเลิก)');
   }
-  inp.focus();
+  setTimeout(function() { inp.focus(); }, 50);
 }
 function sendChat() {
   const inp = document.getElementById('chatInput');
   if (!inp) return;
   const msg = (inp.value || '').trim();
   if (!msg) {
-    focusGame();
+    hideChatPanel();
     return;
   }
   chatMessages.push({
@@ -1088,12 +1327,10 @@ function sendChat() {
   chatReadIndex = chatMessages.length - 1;
   chatReplyTo = null;
   inp.value = '';
-  inp.placeholder = 'กด / เพื่อพิมพ์แชท...';
+  inp.placeholder = 'พิมพ์แชทแล้วกด Enter...';
   renderChatLog();
-  announce('ส่งแล้ว: ' + msg + '\nกลับไปเล่นเกมได้เลย');
-  // สำคัญ: ออกจากช่องพิมพ์ กลับไปควบคุมเกม
-  focusGame();
-  // จำลองข้อความตอบกลับบ้าง
+  announce('ส่งแล้ว: ' + msg);
+  hideChatPanel();
   if (Math.random() < 0.4) {
     setTimeout(function() {
       const npcs = [
@@ -1105,7 +1342,6 @@ function sendChat() {
       const n = npcs[Math.floor(Math.random()*npcs.length)];
       chatMessages.push({ from: n[0], text: n[1] });
       saveChat();
-      renderChatLog();
     }, 900);
   }
 }
@@ -1114,24 +1350,25 @@ function cancelChat() {
   chatReplyTo = null;
   if (inp) {
     inp.value = '';
-    inp.placeholder = 'กด / เพื่อพิมพ์แชท...';
+    inp.placeholder = 'พิมพ์แชทแล้วกด Enter...';
   }
-  focusGame();
-  announce('ยกเลิกการพิมพ์แชท');
+  hideChatPanel();
+  announce('ยกเลิกแชท');
 }
 
-
+// ============================================================
+// Keyboard
+// ============================================================
 window.addEventListener('keydown', function(e) {
   const code = e.code;
   const key = e.key;
   const inp = document.getElementById('chatInput');
   const typing = (inp && document.activeElement === inp);
 
-  // กำลังพิมพ์แชท
   if (typing) {
     if (code === 'Enter') {
       e.preventDefault();
-      sendChat(); // ส่งแล้ว blur กลับเกม
+      sendChat();
       return;
     }
     if (code === 'Escape') {
@@ -1139,11 +1376,9 @@ window.addEventListener('keydown', function(e) {
       cancelChat();
       return;
     }
-    // ปล่อยให้พิมพ์ตัวอักษรได้ ไม่วิ่งคำสั่งเกม
     return;
   }
 
-  // / = เริ่มพิมพ์หรือตอบแชท
   if (key === '/') {
     e.preventDefault();
     startChatType();
@@ -1166,7 +1401,6 @@ window.addEventListener('keydown', function(e) {
   startBGM();
 
   if (mode === 'explore') {
-    // หน้าเดิน: ลูกศร + WASD = เดินทั้งหมด
     if (code === 'ArrowUp' || code === 'KeyW') move(-1, 0);
     else if (code === 'ArrowDown' || code === 'KeyS') move(1, 0);
     else if (code === 'ArrowLeft' || code === 'KeyA') move(0, -1);
@@ -1174,7 +1408,7 @@ window.addEventListener('keydown', function(e) {
     else if (code === 'Enter') tryInteract();
     else if (code === 'KeyB') checkCurrentPosition();
     else if (code === 'KeyC') startSearch();
-    else if (code === 'KeyR') showArena(); // บอกตำแหน่งลานประลองในเมือง
+    else if (code === 'KeyR') showArena();
     else if (code === 'KeyI') showInventory();
     else if (code === 'KeyM') {
       announce(
@@ -1193,8 +1427,8 @@ window.addEventListener('keydown', function(e) {
         "• แถว 53 หลัก 51 = ร้านหินวิวัฒนาการ\n" +
         "• แถว 51 หลัก 51 = ลานประลอง\n" +
         "• แถว 51 หลัก 53 = ศูนย์ข้อมูล\n\n" +
-        "ในเมือง = ร้าน + ลานประลอง\n" +
-        "นอกเมือง = มอนโผล่ตอนเดิน / กด C ค้นหา"
+        "มือถือ: แตะค้างจอยสติ๊กเพื่อเดิน\n" +
+        "ปุ่ม Enter / C / I / B / M / Esc ด้านล่าง"
       );
     }
   }
@@ -1207,77 +1441,387 @@ window.addEventListener('keydown', function(e) {
       e.preventDefault();
     } else if (code === 'Enter') {
       e.preventDefault();
-      if (mode === 'shop') {
-        if (menuOptions[menuCursor]) buy(menuOptions[menuCursor].id);
-        // refresh shop list counts
-        const inv = playerData.inventory;
-        menuOptions.forEach(function(opt) {
-          if (opt.id === 'pokeball') opt.label = 'Pokeball ธรรมดา  100G  (มี ' + (inv.pokeball||0) + ')';
-          if (opt.id === 'greatball') opt.label = 'Great Ball       300G  (มี ' + (inv.greatball||0) + ')';
-          if (opt.id === 'ultraball') opt.label = 'Ultra Ball       800G  (มี ' + (inv.ultraball||0) + ')';
-          if (opt.id === 'food_fire') opt.label = 'อาหารธาตุไฟ      80G  (มี ' + (inv.food_fire||0) + ')';
-          if (opt.id === 'food_water') opt.label = 'อาหารธาตุน้ำ     80G  (มี ' + (inv.food_water||0) + ')';
-          if (opt.id === 'food_grass') opt.label = 'อาหารธาตุพืช     80G  (มี ' + (inv.food_grass||0) + ')';
-          if (opt.id === 'food_electric') opt.label = 'อาหารธาตุไฟฟ้า 100G  (มี ' + (inv.food_electric||0) + ')';
-          if (opt.id === 'food_rock') opt.label = 'อาหารธาตุหิน     80G  (มี ' + (inv.food_rock||0) + ')';
-          if (opt.id === 'evo_stone') opt.label = 'หินวิวัฒนาการ  500G  (มี ' + (inv.evo_stone||0) + ')';
-        });
-        renderMenu(menuTitle || 'ร้านค้า', 'ลูกศรขึ้น/ลง เลือก | Enter ซื้อ | Esc กลับ');
-      } else if (mode === 'catch_select') {
-        if (menuOptions[menuCursor]) selectBattlePet(menuOptions[menuCursor].id);
-      } else if (mode === 'arena_select') {
-        if (menuOptions[menuCursor]) selectArenaPet(menuOptions[menuCursor].id);
-      } else if (mode === 'battle') {
-        if (menuOptions[menuCursor]) doSkill(menuOptions[menuCursor].id);
-        if (mode === 'battle') {
-          buildBattleOptions();
-          renderBattleMenu();
-        }
-      } else if (mode === 'inventory') {
-        openInvActionMenu();
-      } else if (mode === 'inventory_action') {
-        const act = menuOptions[menuCursor] && menuOptions[menuCursor].id;
-        if (act === 'feed') { feedPet(selectedPetIndex); showInventory(); }
-        else if (act === 'evolve') { evolvePet(selectedPetIndex); showInventory(); }
-        else if (act === 'sell') { sellPet(selectedPetIndex); showInventory(); }
-        else { showInventory(); }
-      }
+      handleConfirm();
     } else if (code === 'Escape' || code === 'KeyB') {
-      if (mode === 'inventory_action') {
-        showInventory();
-      } else if (mode === 'catch_select') {
-        mode = 'explore'; battleState = null;
-        announce('คุณหนีจากสัตว์ป่า');
-      } else if (mode === 'battle') {
-        doSkill('flee');
-      } else {
-        mode = 'explore';
-        menuOptions = [];
-        announce('กลับสู่โหมดสำรวจ');
-      }
+      handleEsc();
     }
   }
 });
 
+function handleConfirm() {
+  if (mode === 'shop') {
+    if (menuOptions[menuCursor]) buy(menuOptions[menuCursor].id);
+    const inv = playerData.inventory;
+    menuOptions.forEach(function(opt) {
+      if (opt.id === 'pokeball') opt.label = 'Pokeball ธรรมดา  100G  (มี ' + (inv.pokeball||0) + ')';
+      if (opt.id === 'greatball') opt.label = 'Great Ball       300G  (มี ' + (inv.greatball||0) + ')';
+      if (opt.id === 'ultraball') opt.label = 'Ultra Ball       800G  (มี ' + (inv.ultraball||0) + ')';
+      if (opt.id === 'food_fire') opt.label = 'อาหารธาตุไฟ      80G  (มี ' + (inv.food_fire||0) + ')';
+      if (opt.id === 'food_water') opt.label = 'อาหารธาตุน้ำ     80G  (มี ' + (inv.food_water||0) + ')';
+      if (opt.id === 'food_grass') opt.label = 'อาหารธาตุพืช     80G  (มี ' + (inv.food_grass||0) + ')';
+      if (opt.id === 'food_electric') opt.label = 'อาหารธาตุไฟฟ้า 100G  (มี ' + (inv.food_electric||0) + ')';
+      if (opt.id === 'food_rock') opt.label = 'อาหารธาตุหิน     80G  (มี ' + (inv.food_rock||0) + ')';
+      if (opt.id === 'evo_stone') opt.label = 'หินวิวัฒนาการ  500G  (มี ' + (inv.evo_stone||0) + ')';
+    });
+    renderMenu(menuTitle || 'ร้านค้า', 'ลูกศรขึ้น/ลง เลือก | Enter ซื้อ | Esc กลับ');
+  } else if (mode === 'catch_select') {
+    if (menuOptions[menuCursor]) selectBattlePet(menuOptions[menuCursor].id);
+  } else if (mode === 'arena_select') {
+    if (menuOptions[menuCursor]) selectArenaPet(menuOptions[menuCursor].id);
+  } else if (mode === 'battle') {
+    if (menuOptions[menuCursor]) doSkill(menuOptions[menuCursor].id);
+    if (mode === 'battle') {
+      buildBattleOptions();
+      renderBattleMenu();
+    }
+  } else if (mode === 'inventory') {
+    openInvActionMenu();
+  } else if (mode === 'inventory_action') {
+    const act = menuOptions[menuCursor] && menuOptions[menuCursor].id;
+    if (act === 'feed') { feedPet(selectedPetIndex); showInventory(); }
+    else if (act === 'evolve') { evolvePet(selectedPetIndex); showInventory(); }
+    else if (act === 'sell') { sellPet(selectedPetIndex); showInventory(); }
+    else { showInventory(); }
+  } else if (mode === 'explore') {
+    tryInteract();
+  }
+}
+
+function handleEsc() {
+  if (mode === 'inventory_action') {
+    showInventory();
+  } else if (mode === 'catch_select') {
+    mode = 'explore'; battleState = null;
+    announce('คุณหนีจากสัตว์ป่า');
+  } else if (mode === 'battle') {
+    doSkill('flee');
+  } else if (mode !== 'explore') {
+    mode = 'explore';
+    menuOptions = [];
+    announce('กลับสู่โหมดสำรวจ');
+  }
+}
+
+// ============================================================
+// Mobile virtual joystick + action buttons
+// ============================================================
+let joyActive = false;
+let joyDir = { dr: 0, dc: 0 };
+let joyInterval = null;
+const JOY_DEADZONE = 18;
+const JOY_MAX = 52;
+
+function isTouchDevice() {
+  return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+}
+
+function showMobileControls() {
+  const el = document.getElementById('mobileControls');
+  if (!el) return;
+  if (isTouchDevice() || window.innerWidth < 700) {
+    el.style.display = 'block';
+    el.classList.add('visible');
+    const help = document.getElementById('helpText');
+    if (help) {
+      help.textContent = 'แตะค้างจอยสติ๊ก = เดิน · ปุ่มด้านล่าง = คำสั่ง · / = แชท';
+    }
+  }
+}
+
+let gameStarted = false;
+
+function startGame() {
+  if (gameStarted) {
+    focusGame();
+    return;
+  }
+  gameStarted = true;
+  const screen = document.getElementById('startScreen');
+  if (screen) screen.classList.add('hidden');
+  showMobileControls();
+  startBGM();
+  const body = document.getElementById('gameBody');
+  if (body) {
+    body.setAttribute('tabindex', '0');
+    body.focus({ preventScroll: true });
+  }
+  announce("เกมเริ่มแล้ว!");
+  focusGame();
+  setTimeout(focusGame, 50);
+  setTimeout(focusGame, 150);
+  setTimeout(focusGame, 400);
+}
+
+// ดึงโฟกัสกลับเกมทุกครั้งที่มี interaction (ยกเว้นพิมพ์แชท)
+function lockFocusOnInteraction(e) {
+  const t = e.target;
+  if (t && (t.id === 'chatInput' || t.id === 'chatCloseBtn' || t.id === 'startBtn')) return;
+  if (t && t.closest && t.closest('#chatPanel') && t.tagName === 'INPUT') return;
+  if (!gameStarted) {
+    startGame();
+    return;
+  }
+  focusGame();
+}
+
+function setKnobPosition(dx, dy) {
+  const knob = document.getElementById('dpadKnob');
+  if (!knob) return;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  let nx = dx, ny = dy;
+  if (dist > JOY_MAX) {
+    nx = (dx / dist) * JOY_MAX;
+    ny = (dy / dist) * JOY_MAX;
+  }
+  knob.style.transform = 'translate(calc(-50% + ' + nx + 'px), calc(-50% + ' + ny + 'px))';
+  if (dist > JOY_DEADZONE) knob.classList.add('active');
+  else knob.classList.remove('active');
+}
+
+function resetKnob() {
+  const knob = document.getElementById('dpadKnob');
+  if (!knob) return;
+  knob.style.transform = 'translate(-50%, -50%)';
+  knob.classList.remove('active');
+}
+
+function updateJoyDirection(clientX, clientY) {
+  const base = document.getElementById('dpadBase');
+  if (!base) return;
+  const rect = base.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const dx = clientX - cx;
+  const dy = clientY - cy;
+  setKnobPosition(dx, dy);
+
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < JOY_DEADZONE) {
+    joyDir = { dr: 0, dc: 0 };
+    return;
+  }
+  // ใช้ทิศหลัก (4 ทิศ) ตามมุม
+  const angle = Math.atan2(dy, dx); // -PI..PI, 0 = ขวา
+  const deg = angle * 180 / Math.PI;
+  if (deg >= -45 && deg < 45) {
+    joyDir = { dr: 0, dc: 1 };   // ขวา
+  } else if (deg >= 45 && deg < 135) {
+    joyDir = { dr: 1, dc: 0 };   // ลง
+  } else if (deg >= -135 && deg < -45) {
+    joyDir = { dr: -1, dc: 0 };  // ขึ้น
+  } else {
+    joyDir = { dr: 0, dc: -1 };  // ซ้าย
+  }
+}
+
+function startJoyLoop() {
+  if (joyInterval) return;
+  joyInterval = setInterval(function() {
+    if (!joyActive) return;
+    if (mode === 'explore') {
+      if (joyDir.dr !== 0 || joyDir.dc !== 0) {
+        move(joyDir.dr, joyDir.dc);
+      }
+    } else if (mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' || mode === 'battle' || mode === 'inventory' || mode === 'inventory_action') {
+      // ในเมนู: ขึ้น/ลง ใช้เลือกเมนู
+      if (joyDir.dr === -1) menuMove(-1);
+      else if (joyDir.dr === 1) menuMove(1);
+    }
+  }, MOVE_COOLDOWN);
+}
+
+function stopJoyLoop() {
+  if (joyInterval) {
+    clearInterval(joyInterval);
+    joyInterval = null;
+  }
+  joyDir = { dr: 0, dc: 0 };
+  joyActive = false;
+  resetKnob();
+}
+
+function setupJoystick() {
+  const base = document.getElementById('dpadBase');
+  if (!base) return;
+
+  function onStart(e) {
+    e.preventDefault();
+    startBGM();
+    focusGame();
+    joyActive = true;
+    const t = e.touches ? e.touches[0] : e;
+    updateJoyDirection(t.clientX, t.clientY);
+    startJoyLoop();
+  }
+  function onMove(e) {
+    if (!joyActive) return;
+    e.preventDefault();
+    const t = e.touches ? e.touches[0] : e;
+    updateJoyDirection(t.clientX, t.clientY);
+  }
+  function onEnd(e) {
+    if (!joyActive) return;
+    e.preventDefault();
+    stopJoyLoop();
+  }
+
+  base.addEventListener('touchstart', onStart, { passive: false });
+  base.addEventListener('touchmove', onMove, { passive: false });
+  base.addEventListener('touchend', onEnd, { passive: false });
+  base.addEventListener('touchcancel', onEnd, { passive: false });
+
+  // รองรับเมาส์ (ทดสอบบนเดสก์ท็อป)
+  base.addEventListener('mousedown', function(e) {
+    onStart(e);
+    function onMouseMove(ev) { onMove(ev); }
+    function onMouseUp(ev) {
+      onEnd(ev);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    }
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  });
+}
+
+function setupActionButtons() {
+  document.querySelectorAll('.mc-btn').forEach(function(btn) {
+    const action = btn.getAttribute('data-action');
+    function fire(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      startBGM();
+      focusGame();
+      btn.classList.add('pressed');
+      setTimeout(function() { btn.classList.remove('pressed'); }, 120);
+
+      if (action === 'enter') {
+        if (mode === 'explore') tryInteract();
+        else handleConfirm();
+      } else if (action === 'esc') {
+        handleEsc();
+      } else if (action === 'c') {
+        if (mode === 'explore') startSearch();
+      } else if (action === 'i') {
+        if (mode === 'explore') showInventory();
+        else if (mode === 'inventory' || mode === 'inventory_action') handleEsc();
+      } else if (action === 'b') {
+        if (mode === 'explore') checkCurrentPosition();
+      } else if (action === 'm') {
+        if (mode === 'explore') {
+          announce(
+            "=== เมนูช่วยเหลือ ===\n\n" +
+            "มือถือ: แตะค้างจอยสติ๊กเพื่อเดิน\n" +
+            "ขึ้น/ลง/ซ้าย/ขวา ตามทิศที่กดค้าง\n\n" +
+            "Enter = เปิดร้าน / ยืนยันเมนู\n" +
+            "Esc = กลับ / หนี\n" +
+            "C = ค้นหาสัตว์ป่า (นอกเมือง)\n" +
+            "I = คลังสัตว์เลี้ยง\n" +
+            "B = เช็คพิกัด\n\n" +
+            "ในเมือง (เดินไปยืนแล้วกด Enter):\n" +
+            "• แถว 49 หลัก 51 = ร้านลูกบอล\n" +
+            "• แถว 51 หลัก 49 = ร้านอาหาร\n" +
+            "• แถว 53 หลัก 51 = ร้านหินวิวัฒนาการ\n" +
+            "• แถว 51 หลัก 51 = ลานประลอง\n" +
+            "• แถว 51 หลัก 53 = ศูนย์ข้อมูล"
+          );
+        }
+      }
+    }
+    btn.addEventListener('touchstart', fire, { passive: false });
+    btn.addEventListener('click', fire);
+  });
+}
+
+// แตะที่พื้นที่เกมเพื่อโฟกัส — เก็บโฟกัสไว้ตลอด
+function setupFocusOnTap() {
+  const body = document.getElementById('gameBody');
+  if (!body) return;
+  body.addEventListener('click', function(e) {
+    if (e.target && (e.target.id === 'chatInput' || e.target.id === 'chatCloseBtn')) return;
+    if (e.target && e.target.closest && e.target.closest('#chatPanel') && e.target.tagName === 'INPUT') return;
+    focusGame();
+    startBGM();
+  });
+  // ถ้าโฟกัสหลุด (ยกเว้นตอนพิมพ์แชท) ให้ดึงกลับ
+  body.addEventListener('blur', function() {
+    setTimeout(function() {
+      const ae = document.activeElement;
+      if (ae && (ae.id === 'chatInput' || ae.id === 'chatCloseBtn')) return;
+      if (ae && ae.classList && ae.classList.contains('mc-btn')) return;
+      focusGame();
+    }, 0);
+  });
+  const closeBtn = document.getElementById('chatCloseBtn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      hideChatPanel();
+    });
+  }
+  focusGame();
+  setTimeout(focusGame, 50);
+  setTimeout(focusGame, 200);
+  setTimeout(focusGame, 500);
+}
+
 window.onload = function() {
-  document.getElementById('gameBody').focus();
   loadGame();
   loadChat();
   if (chatMessages.length) chatReadIndex = chatMessages.length - 1;
-  renderChatLog();
-  announce(
-    "ยินดีต้อนรับสู่ ไตรภูมิ Monster Quest!\n\n" +
-    "คุณอยู่ที่เมืองหลวงไตรภูมิ\n\n" +
-    "ในเมือง (เดินไปยืน แล้วกด Enter):\n" +
-    "• ร้านลูกบอล → แถว 49 หลัก 51\n" +
-    "• ร้านอาหาร → แถว 51 หลัก 49\n" +
-    "• ร้านหิน → แถว 53 หลัก 51\n" +
-    "• ลานประลอง → แถว 51 หลัก 51\n\n" +
-    "นอกเมือง:\n" +
-    "• เดินสำรวจ → มอนอาจโผล่มาเอง\n" +
-    "• กด C = ค้นหาสัตว์ป่าเอง\n\n" +
-    "กด M ดูคำสั่งทั้งหมด"
-  );
+  setupJoystick();
+  setupActionButtons();
+  setupFocusOnTap();
+
+  // ปุ่มเริ่มเกม (ถ้ายังแสดงอยู่)
+  const startBtn = document.getElementById('startBtn');
+  if (startBtn) {
+    startBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      startGame();
+    });
+    startBtn.addEventListener('touchend', function(e) {
+      e.preventDefault();
+      startGame();
+    }, { passive: false });
+  }
+
+  // interaction ใดๆ = เริ่มเกม + ล็อกโฟกัส
+  document.addEventListener('pointerdown', lockFocusOnInteraction, true);
+  document.addEventListener('keydown', function(e) {
+    if (!gameStarted) {
+      startGame();
+    } else {
+      const inp = document.getElementById('chatInput');
+      if (inp && document.activeElement === inp) return;
+      // คงโฟกัสที่เกมไว้ตลอดตอนเล่น
+      const body = document.getElementById('gameBody');
+      if (body && document.activeElement !== body && document.activeElement !== inp) {
+        body.focus({ preventScroll: true });
+      }
+    }
+  }, true);
+
+  // ===== เข้าโหมดโฟกัสอัตโนมัติตอนเปิดเกม =====
+  // เรียก startGame ทันที (ไม่ต้องรอคลิก)
+  startGame();
+
+  // โฟกัสซ้ำหลายรอบ — บางเบราว์เซอร์รับหลัง paint
+  requestAnimationFrame(function() {
+    focusGame();
+    setTimeout(focusGame, 0);
+    setTimeout(focusGame, 100);
+    setTimeout(focusGame, 300);
+    setTimeout(focusGame, 600);
+  });
+
+  // ถ้ากลับมาแท็บนี้ ให้โฟกัสใหม่
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && gameStarted) focusGame();
+  });
+  window.addEventListener('focus', function() {
+    if (gameStarted) focusGame();
+  });
 };
 </script>
 </body>
