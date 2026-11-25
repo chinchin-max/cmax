@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ไตรภูมิ Monster Quest</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0b0f19;
+      color: #e5e7eb;
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+    }
+    #gameBody {
+      outline: none;
+      width: 100%;
+      max-width: 640px;
+    }
+    .status {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      background: #1f2937;
+      border: 2px solid #374151;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      font-weight: 700;
+      font-size: 0.92rem;
+    }
+    .money { color: #fbbf24; }
+    #display {
+      background: #111827;
+      border: 2px solid #374151;
+      border-radius: 8px;
+      padding: 18px;
+      min-height: 210px;
+      font-size: 1.05rem;
+      line-height: 1.65;
+      white-space: pre-wrap;
+    }
+    .help {
+      margin-top: 14px;
+      font-size: 0.84rem;
+      color: #9ca3af;
+      text-align: center;
+      line-height: 1.55;
+    }
+    .sr-only {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0);
+      border: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameBody" tabindex="0">
+    <div class="status">
+      <span>บอล: <span id="ball-count">0</span> | อาหาร: <span id="food-count">0</span> | หิน: <span id="evo-count">0</span></span>
+      <span class="money">เหรียญ: <span id="money">1,000</span> G</span>
+    </div>
+    <div id="display">กำลังโหลดเกม...</div>
+        <div id="chatPanel" style="display:block; margin-top:10px; background:#0f172a; border:2px solid #334155; border-radius:8px; padding:12px; width:100%;">
+      <div style="font-weight:700; margin-bottom:8px; color:#93c5fd;">แชทโลกไตรภูมิ</div>
+      <div id="chatLog" style="height:120px; overflow-y:auto; background:#020617; border-radius:6px; padding:8px; font-size:0.9rem; line-height:1.5; margin-bottom:8px; white-space:pre-wrap;"></div>
+      <input id="chatInput" type="text" placeholder="กด / เพื่อพิมพ์แชท..." maxlength="120"
+        style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid #475569; background:#1e293b; color:#e2e8f0; outline:none; box-sizing:border-box;" />
+      <div style="margin-top:6px; font-size:0.78rem; color:#94a3b8;">
+        [ ] = อ่านแชท &nbsp;|&nbsp; / = พิมพ์แชท &nbsp;|&nbsp; Enter = ส่งแล้วเล่นต่อ
+      </div>
+    </div>
+    <div class="help">
+      ลูกศร / WASD = เดิน &nbsp;|&nbsp; Enter = เปิดร้าน / ยืนยันเมนู<br>
+      / = พิมพ์แชท &nbsp;|&nbsp; [ ] = อ่านแชท &nbsp;|&nbsp; C = ค้นหามอน &nbsp;|&nbsp; I = คลัง<br>
+      I = คลัง &nbsp;|&nbsp; B = เช็คพิกัด &nbsp;|&nbsp; M = เมนูช่วยเหลือ
+    </div>
+  </div>
+  <div id="srAnnouncer" class="sr-only" aria-live="assertive"></div>
+
+<script>
+// ============================================================
+// 1. แผนที่ + เสียง
+// ============================================================
+const size = 100;
+let r = 49;
+let c = 49;
+let lastMoveTime = 0;
+const MOVE_COOLDOWN = 450; // มิลลิวินาที (ยิ่งมากยิ่งเดินช้า)
+
+const bgm = new Audio('forest_ambient.wav');
+bgm.loop = true; bgm.volume = 0.40;
+
+const sounds = {
+  grass:    [new Audio('step_grass1.wav'), new Audio('step_grass2.wav'), new Audio('step_grass3.wav')],
+  mountain: [new Audio('step_mountain.wav')],
+  stone:    [new Audio('step_stone1.wav'), new Audio('step_stone2.wav')],
+  dirt:     [new Audio('step_dirt1.wav'), new Audio('step_dirt2.wav')],
+  water:    [new Audio('step_water1.wav'), new Audio('step_water2.wav')],
+  wall: new Audio('wall_hit.wav'),
+  edge: new Audio('edge_hit.wav'),
+  ocean: new Audio('ocean_ambient.wav'),
+  forest: new Audio('forest_ambient.wav')
+};
+
+Object.values(sounds).forEach(item => {
+  if (Array.isArray(item)) item.forEach(s => s.volume = 0.45);
+  else if (item !== sounds.ocean && item !== sounds.forest) item.volume = 0.55;
+});
+sounds.ocean.loop = true;  sounds.ocean.volume = 0.35;
+sounds.forest.loop = true; sounds.forest.volume = 0.42;
+
+function playStepSound(type = 'dirt') {
+  const list = sounds[type];
+  if (!list || !list.length) return;
+  const sound = list[Math.floor(Math.random() * list.length)];
+  sound.currentTime = 0;
+  sound.play().catch(() => {});
+}
+function playWallSound() { sounds.wall.currentTime = 0; sounds.wall.play().catch(() => {}); }
+function playEdgeSound() { sounds.edge.currentTime = 0; sounds.edge.play().catch(() => {}); }
+
+function updateAmbientSound(zone) {
+  const isOcean  = zone.includes("มหาสมุทร");
+  const isForest = zone.includes("ป่าหิมพานต์");
+  if (isOcean)  { if (sounds.ocean.paused)  { sounds.ocean.currentTime = 0;  sounds.ocean.play().catch(() => {}); } }
+  else if (!sounds.ocean.paused)  sounds.ocean.pause();
+  if (isForest) { if (sounds.forest.paused) { sounds.forest.currentTime = 0; sounds.forest.play().catch(() => {}); } }
+  else if (!sounds.forest.paused) sounds.forest.pause();
+}
+
+function getZoneName(row, col) {
+  if (row >= 40 && row <= 60 && col >= 40 && col <= 60)
+    return "เมืองหลวงไตรภูมิ (เขตปลอดภัยและชุมชน)";
+  if (row < 40 && col >= 30 && col <= 70)
+    return "เขาพระสุเมรุ (ดินแดนศักดิ์สิทธิ์และวิหาร)";
+  if (row >= 60 && col >= 30 && col <= 70)
+    return "ป่าหิมพานต์ (ดินแดนลึกลับและสัตว์ป่าหิมพานต์)";
+  if (col < 30)
+    return "มหาสมุทรสีทันดร (คลื่นลมแรงและเกาะแก่ง)";
+  if (col > 70)
+    return "ป่ากว้างชายแดน (แนวเขตธรรมชาติอันไกลโพ้น)";
+  return "ทุ่งราบกว้างใหญ่ (พื้นที่รกร้างและทางผ่าน)";
+}
+
+function isCityGate(row, col) {
+  const onWallLine = (row === 39 || row === 61 || col === 39 || col === 61);
+  const inGateRange = (col >= 48 && col <= 52) || (row >= 48 && row <= 52);
+  return onWallLine && inGateRange;
+}
+
+function isWall(row, col) {
+  const isCityWallRow = (row === 39 || row === 61) && (col >= 40 && col <= 60);
+  const isCityWallCol = (col === 39 || col === 61) && (row >= 40 && row <= 60);
+  if ((isCityWallRow || isCityWallCol) && !isCityGate(row, col))
+    return "กำแพงเมืองหลวงโบราณหนาแน่น";
+  if (row === 38 && (col < 35 || col > 65))
+    return "แนวเทือกเขาหินสูงชัน";
+  if (row === 62 && (col < 40 || col > 60))
+    return "แนวต้นไม้หนาทึบและหนาม";
+  return null;
+}
+
+// ร้านค้าที่วางบนพื้นเมือง (พิกัด row,col)
+const CITY_SHOPS = {
+  "48,50": { id: "ball_shop",   name: "ร้านลูกบอล",       desc: "ขาย Pokeball / Great Ball / Ultra Ball" },
+  "50,48": { id: "food_shop",   name: "ร้านอาหารสัตว์",   desc: "ขายอาหารธาตุต่างๆ" },
+  "52,50": { id: "evo_shop",    name: "ร้านหินวิวัฒนาการ", desc: "ขายหินวิวัฒนาการ" },
+  "50,52": { id: "info_center", name: "ศูนย์ข้อมูล",      desc: "ดูคำแนะนำและสถานะรวม" },
+  "50,50": { id: "arena",       name: "ลานประลองไตรภูมิ", desc: "ต่อสู้กับนักรบอื่นเพื่อรับรางวัล" }
+};
+
+function getShopAt(row, col) {
+  return CITY_SHOPS[row + "," + col] || null;
+}
+
+function announce(text) {
+  document.getElementById('display').innerText = text;
+  document.getElementById('srAnnouncer').innerText = text;
+}
+
+// ============================================================
+// 2. ข้อมูลเกม
+// ============================================================
+const STORAGE_KEY_PLAYER = 'tri_monster_player_v4';
+const STORAGE_KEY_PETS   = 'tri_monster_pets_v4';
+
+const SHOP_ITEMS = {
+  pokeball:  { name: 'Pokeball ธรรมดา', price: 100 },
+  greatball: { name: 'Great Ball',     price: 300 },
+  ultraball: { name: 'Ultra Ball',     price: 800 }
+};
+
+const PET_FOODS = {
+  food_fire:     { name: 'อาหารธาตุไฟ',   price: 80 },
+  food_water:    { name: 'อาหารธาตุน้ำ',  price: 80 },
+  food_grass:    { name: 'อาหารธาตุพืช',  price: 80 },
+  food_electric: { name: 'อาหารธาตุไฟฟ้า', price: 100 },
+  food_rock:     { name: 'อาหารธาตุหิน',  price: 80 }
+};
+
+const SPECIAL_SHOP = {
+  evo_stone: { name: 'หินวิวัฒนาการ', price: 500 }
+};
+
+const ELEMENT_WEAKNESS = {
+  'ไฟ': 'น้ำ', 'น้ำ': 'ไฟฟ้า', 'พืช': 'ไฟ', 'ไฟฟ้า': 'หิน', 'หิน': 'พืช'
+};
+
+const EVOLUTION_MAP = {
+  'ฮิโตคาเงะ': 'ลิซาร์ดอน', 'ฟุชิกิดาเนะ': 'ฟุชิกิบาสะ', 'เซนิกาเมะ': 'คาเมล็อค',
+  'กระต่ายทุ่งหญ้า': 'กระต่ายสายฟ้า', 'กบใบไม้': 'กบยักษ์พงไพร', 'หนูพงไพร': 'หนูราชา',
+  'เต่าคลื่นวารี': 'เต่าเกราะโบราณ', 'จิ้งจอกสายหมอก': 'จิ้งจอกราตรี',
+  'งูหลามพงไพร': 'พญานาคใบไม้', 'ค้างคาวสายฟ้า': 'ค้างคาวยักษ์สายฟ้า',
+  'สิงโตหิน': 'ราชสีห์หินลาวา', 'นกสายฟ้า': 'พญาครุฑสายฟ้า',
+  'มังกรน้อยภูเขา': 'มังกรภูเขาไฟ', 'เสือไฟ': 'เสือเพลิง',
+  'ปลาวาฬน้อย': 'ปลาวาฬยักษ์', 'ฉลามสายฟ้า': 'ฉลามจักรพรรดิ',
+  'เต่าทะเลโบราณ': 'เต่าทะเลเทพ', 'หมาป่าราชสีห์': 'หมาป่าราชา',
+  'นกอินทรีหิน': 'นกอินทรีเหล็ก'
+};
+
+function getCatchZone(zoneName) {
+  if (zoneName.includes("เมืองหลวง")) return null;
+  if (zoneName.includes("ทุ่งราบ")) {
+    return { name: "ทุ่งราบกว้างใหญ่", levelMin: 1, levelMax: 6, elements: ['พืช','น้ำ'],
+      names: ['ฟุชิกิดาเนะ','เถาวัลย์พฤกษา','กระต่ายทุ่งหญ้า','กบใบไม้','หนูพงไพร','เต่าคลื่นวารี','นกทุ่ง'] };
+  }
+  if (zoneName.includes("ป่าหิมพานต์")) {
+    return { name: "ป่าหิมพานต์", levelMin: 8, levelMax: 16, elements: ['พืช','ไฟฟ้า','น้ำ'],
+      names: ['จิ้งจอกสายหมอก','งูหลามพงไพร','ค้างคาวสายฟ้า','หนูสายฟ้าฟาด','เห็ดพิษราตรี','ไดโนเสาร์ใบมีด','เสือลายเมฆ'] };
+  }
+  if (zoneName.includes("เขาพระสุเมรุ")) {
+    return { name: "เขาพระสุเมรุ", levelMin: 14, levelMax: 26, elements: ['หิน','ไฟ','ไฟฟ้า'],
+      names: ['สิงโตหิน','นกสายฟ้า','มังกรน้อยภูเขา','เสือไฟ','กบหินลาวา','พญาครุฑน้อย','ยักษ์หิน'] };
+  }
+  if (zoneName.includes("มหาสมุทร")) {
+    return { name: "มหาสมุทรสีทันดร", levelMin: 7, levelMax: 18, elements: ['น้ำ','ไฟฟ้า'],
+      names: ['ปลาวาฬน้อย','ฉลามสายฟ้า','เต่าทะเลโบราณ','หมึกยักษ์','ปูหินปะการัง','นางเงือกน้อย','พญานาคทะเล'] };
+  }
+  if (zoneName.includes("ป่ากว้างชายแดน")) {
+    return { name: "ป่ากว้างชายแดน", levelMin: 10, levelMax: 20, elements: ['พืช','หิน','ไฟ'],
+      names: ['หมาป่าราชสีห์','นกอินทรีหิน','ต้นไม้มีชีวิต','หมูป่าไฟ','กิ้งก่าหิน','หมีพงไพร'] };
+  }
+  return { name: "พื้นที่รกร้าง", levelMin: 1, levelMax: 5, elements: ['พืช'], names: ['หนูพงไพร','นกทุ่ง'] };
+}
+
+const ARENA_OPPONENTS = [
+  { name: 'นักรบมือใหม่',   petName: 'หนูพงไพร',      level: 5,  element: 'พืช',  atk: 22, hp: 40 },
+  { name: 'นักล่าทุ่งหญ้า', petName: 'กบใบไม้',       level: 8,  element: 'พืช',  atk: 30, hp: 55 },
+  { name: 'นักรบสายน้ำ',   petName: 'เต่าคลื่นวารี',   level: 10, element: 'น้ำ',  atk: 35, hp: 70 },
+  { name: 'นักรบสายไฟ',   petName: 'ค้างคาวสายฟ้า',  level: 13, element: 'ไฟฟ้า', atk: 45, hp: 65 },
+  { name: 'นักรบภูเขา',    petName: 'สิงโตหิน',      level: 16, element: 'หิน',  atk: 55, hp: 85 },
+  { name: 'จ้าวแห่งไฟ',   petName: 'เสือไฟ',        level: 20, element: 'ไฟ',   atk: 70, hp: 90 },
+  { name: 'ราชาทะเล',     petName: 'ฉลามสายฟ้า',    level: 22, element: 'ไฟฟ้า', atk: 75, hp: 100 },
+  { name: 'ตำนานไตรภูมิ', petName: 'มังกรน้อยภูเขา', level: 28, element: 'ไฟ',  atk: 95, hp: 120 }
+];
+
+const defaultPlayerData = {
+  money: 1000,
+  inventory: {
+    pokeball: 6, greatball: 1, ultraball: 0,
+    food_fire: 2, food_water: 2, food_grass: 2,
+    food_electric: 1, food_rock: 1, evo_stone: 0
+  },
+  arenaWins: 0
+};
+
+const defaultPetInventory = [
+  { id: 1, name: 'ฮิโตคาเงะ',   level: 5, element: 'ไฟ',  atk: 28, hp: 45, maxHp: 45, weakness: 'น้ำ',   sellPrice: 260, evolved: false },
+  { id: 2, name: 'ฟุชิกิดาเนะ', level: 5, element: 'พืช', atk: 22, hp: 50, maxHp: 50, weakness: 'ไฟ',   sellPrice: 260, evolved: false },
+  { id: 3, name: 'เซนิกาเมะ',   level: 4, element: 'น้ำ', atk: 20, hp: 52, maxHp: 52, weakness: 'ไฟฟ้า', sellPrice: 220, evolved: false }
+];
+
+let playerData = {};
+let petInventory = [];
+let mode = 'explore';
+let selectedPetIndex = -1;
+let battleState = null;
+let menuCursor = 0;
+let menuOptions = []; // {id,label} for current menu
+let menuTitle = '';
+
+function saveGame() {
+  try {
+    localStorage.setItem(STORAGE_KEY_PLAYER, JSON.stringify(playerData));
+    localStorage.setItem(STORAGE_KEY_PETS, JSON.stringify(petInventory));
+  } catch (e) {}
+}
+
+function loadGame() {
+  try {
+    const p = localStorage.getItem(STORAGE_KEY_PLAYER);
+    const pets = localStorage.getItem(STORAGE_KEY_PETS);
+    playerData = p ? JSON.parse(p) : JSON.parse(JSON.stringify(defaultPlayerData));
+    petInventory = pets ? JSON.parse(pets) : JSON.parse(JSON.stringify(defaultPetInventory));
+    if (!playerData.inventory) playerData.inventory = Object.assign({}, defaultPlayerData.inventory);
+    if (typeof playerData.inventory.evo_stone !== 'number') playerData.inventory.evo_stone = 0;
+    if (typeof playerData.arenaWins !== 'number') playerData.arenaWins = 0;
+    petInventory.forEach(function(p) { if (!p.maxHp) p.maxHp = p.hp; });
+  } catch (e) {
+    playerData = JSON.parse(JSON.stringify(defaultPlayerData));
+    petInventory = JSON.parse(JSON.stringify(defaultPetInventory));
+  }
+  updateStatusBar();
+}
+
+function updateStatusBar() {
+  const inv = playerData.inventory || {};
+  const balls = (inv.pokeball||0) + (inv.greatball||0) + (inv.ultraball||0);
+  const foods = (inv.food_fire||0)+(inv.food_water||0)+(inv.food_grass||0)+(inv.food_electric||0)+(inv.food_rock||0);
+  document.getElementById('ball-count').textContent = balls;
+  document.getElementById('food-count').textContent = foods;
+  document.getElementById('evo-count').textContent = inv.evo_stone || 0;
+  document.getElementById('money').textContent = playerData.money.toLocaleString();
+}
+
+// ============================================================
+// 3. การเดิน
+// ============================================================
+function move(dr, dc) {
+  if (mode !== 'explore') return;
+  const now = Date.now();
+  if (now - lastMoveTime < MOVE_COOLDOWN) return; // ยังเดินไม่ได้ รอ cooldow
+  lastMoveTime = now;
+  const newR = r + dr;
+  const newC = c + dc;
+
+  if (newR >= 0 && newR < size && newC >= 0 && newC < size) {
+    const wallReason = isWall(newR, newC);
+    if (wallReason) {
+      playWallSound();
+      announce("เดินไปไม่ได้! ชนเข้ากับ: " + wallReason);
+      return;
+    }
+    r = newR; c = newC;
+    const zone = getZoneName(r, c);
+
+    let soundType = 'dirt';
+    if (zone.includes("ป่าหิมพานต์") || zone.includes("ทุ่งราบ") || zone.includes("ป่ากว้าง")) soundType = 'grass';
+    else if (zone.includes("เมืองหลวง")) soundType = 'stone';
+    else if (zone.includes("เขาพระสุเมรุ")) soundType = 'mountain';
+    else if (zone.includes("มหาสมุทร")) soundType = 'water';
+
+    playStepSound(soundType);
+    updateAmbientSound(zone);
+
+    const shop = getShopAt(r, c);
+    if (shop) {
+      announce("คุณยืนอยู่หน้า" + shop.name + "\n" + shop.desc + "\n\nกด Enter เพื่อเข้าใช้บริการ");
+      return;
+    }
+
+    // มอนโผล่เองตอนเดินนอกเมือง (โอกาส ~18%)
+    const catchZone = getCatchZone(zone);
+    if (catchZone && Math.random() < 0.18) {
+      startSearch(true); // true = จาก random encounter
+      return;
+    }
+
+    if (isCityGate(r, c)) {
+      announce("คุณกำลังผ่านประตูเมืองหลวงไตรภูมิ | โซน: " + zone);
+    } else {
+      announce("เข้าสู่ " + zone);
+    }
+  } else {
+    playEdgeSound();
+    announce("ชนขอบแผนที่ ไปต่อไม่ได้");
+  }
+}
+
+function checkCurrentPosition() {
+  const zone = getZoneName(r, c);
+  const shop = getShopAt(r, c);
+  const catchable = getCatchZone(zone) ? "มอนโผล่ได้ตอนเดิน / กด C ค้นหา" : "เขตปลอดภัย (มีร้าน + ลานประลอง)";
+  let text = "พิกัด " + (r+1) + ", " + (c+1) + "\nโซน: " + zone + "\nสถานะ: " + catchable + "\nชัยชนะลานประลอง: " + (playerData.arenaWins || 0);
+  if (shop) text += "\n\nคุณยืนอยู่หน้า: " + shop.name + "\nกด Enter เพื่อเปิด";
+  announce(text);
+}
+
+function tryInteract() {
+  if (mode !== 'explore') return;
+  const shop = getShopAt(r, c);
+  if (!shop) {
+    announce("ไม่มีอะไรให้โต้ตอบที่นี่\nเดินไปยืนหน้าร้านในเมืองแล้วกด Enter");
+    return;
+  }
+  openShopById(shop.id);
+}
+
+// ============================================================
+// 4. ร้านค้า
+// ============================================================
+function openShopById(shopId) {
+  mode = 'shop';
+  const inv = playerData.inventory;
+  menuCursor = 0;
+
+  if (shopId === 'ball_shop') {
+    menuOptions = [
+      { id: 'pokeball', label: 'Pokeball ธรรมดา  100G  (มี ' + (inv.pokeball||0) + ')' },
+      { id: 'greatball', label: 'Great Ball       300G  (มี ' + (inv.greatball||0) + ')' },
+      { id: 'ultraball', label: 'Ultra Ball       800G  (มี ' + (inv.ultraball||0) + ')' }
+    ];
+    menuTitle = 'ร้านลูกบอล'; renderMenu(menuTitle, 'ลูกศรขึ้น/ลง เลือก | Enter ซื้อ | Esc กลับ');
+  } else if (shopId === 'food_shop') {
+    menuOptions = [
+      { id: 'food_fire', label: 'อาหารธาตุไฟ      80G  (มี ' + (inv.food_fire||0) + ')' },
+      { id: 'food_water', label: 'อาหารธาตุน้ำ     80G  (มี ' + (inv.food_water||0) + ')' },
+      { id: 'food_grass', label: 'อาหารธาตุพืช     80G  (มี ' + (inv.food_grass||0) + ')' },
+      { id: 'food_electric', label: 'อาหารธาตุไฟฟ้า 100G  (มี ' + (inv.food_electric||0) + ')' },
+      { id: 'food_rock', label: 'อาหารธาตุหิน     80G  (มี ' + (inv.food_rock||0) + ')' }
+    ];
+    menuTitle = 'ร้านอาหารสัตว์'; renderMenu(menuTitle, 'ลูกศรขึ้น/ลง เลือก | Enter ซื้อ | Esc กลับ');
+  } else if (shopId === 'evo_shop') {
+    menuOptions = [
+      { id: 'evo_stone', label: 'หินวิวัฒนาการ  500G  (มี ' + (inv.evo_stone||0) + ')' }
+    ];
+    menuTitle = 'ร้านหินวิวัฒนาการ'; renderMenu(menuTitle, 'Enter ซื้อ | Esc กลับ');
+  } else if (shopId === 'info_center') {
+    mode = 'explore';
+    menuOptions = [];
+    announce(
+      "ศูนย์ข้อมูลเมืองหลวง\n\n" +
+      "เงิน: " + playerData.money + " G\n" +
+      "สัตว์เลี้ยง: " + petInventory.length + " ตัว\n" +
+      "ชัยชนะลานประลอง: " + (playerData.arenaWins || 0) + "\n\n" +
+      "ตำแหน่งในเมือง (พิกัด = แถว+1, หลัก+1):\n" +
+      "• 49, 51 → ร้านลูกบอล\n" +
+      "• 51, 49 → ร้านอาหารสัตว์\n" +
+      "• 53, 51 → ร้านหินวิวัฒนาการ\n" +
+      "• 51, 51 → ลานประลอง\n" +
+      "• 51, 53 → ศูนย์ข้อมูล\n"
+    );
+  } else if (shopId === 'arena') {
+    startArenaFromCity();
+  }
+}
+
+function renderMenu(title, hint) {
+  let t = title + "\n\n";
+  menuOptions.forEach(function(opt, i) {
+    const mark = (i === menuCursor ? "▶ " : "  ");
+    t += mark + opt.label + "\n\n";
+  });
+  t += (hint || "ลูกศรขึ้น/ลง เลือก | Enter ยืนยัน | Esc กลับ");
+  announce(t);
+  if (menuOptions[menuCursor]) {
+    const sr = document.getElementById('srAnnouncer');
+    if (sr) sr.innerText = 'เลือก ' + menuOptions[menuCursor].label;
+  }
+}
+
+function menuMove(delta) {
+  if (!menuOptions.length) return;
+  menuCursor = (menuCursor + delta + menuOptions.length) % menuOptions.length;
+  // re-announce based on mode
+  if (mode === 'shop') {
+    renderMenu(menuTitle || 'ร้านค้า', 'ลูกศรขึ้น/ลง เลือก | Enter ซื้อ | Esc กลับ');
+  } else if (mode === 'inventory') {
+    renderInventoryMenu();
+  } else if (mode === 'catch_select' || mode === 'arena_select') {
+    renderPetSelectMenu(mode === 'arena_select' ? 'ลานประลอง — เลือกสัตว์' : 'เลือกสัตว์เลี้ยงเข้าต่อสู้');
+  } else if (mode === 'battle') {
+    renderBattleMenu();
+  } else if (mode === 'inventory_action') {
+    renderInvActionMenu();
+  }
+}
+
+
+function buy(itemKey) {
+  if (mode !== 'shop') return;
+  const item = SHOP_ITEMS[itemKey] || PET_FOODS[itemKey] || SPECIAL_SHOP[itemKey];
+  if (!item) return;
+  if (playerData.money < item.price) {
+    announce("เงินไม่พอ! ต้องการ " + item.price + " G\n(ตอนนี้มี " + playerData.money + " G)");
+    return;
+  }
+  playerData.money -= item.price;
+  playerData.inventory[itemKey] = (playerData.inventory[itemKey] || 0) + 1;
+  saveGame();
+  updateStatusBar();
+  announce("ซื้อ " + item.name + " สำเร็จ! (-" + item.price + " G)\nเงินเหลือ " + playerData.money + " G");
+}
+
+// ============================================================
+// 5. ค้นหาสัตว์ป่า
+// ============================================================
+function startSearch(fromRandom) {
+  if (mode !== 'explore') return;
+  const zoneName = getZoneName(r, c);
+  const catchZone = getCatchZone(zoneName);
+
+  if (!catchZone) {
+    if (!fromRandom) {
+      announce("เมืองหลวงเป็นเขตปลอดภัย\nไม่สามารถจับหรือต่อสู้ได้ที่นี่\nออกไปนอกเมืองก่อน");
+    }
+    return;
+  }
+
+  const level   = Math.floor(Math.random() * (catchZone.levelMax - catchZone.levelMin + 1)) + catchZone.levelMin;
+  const name    = catchZone.names[Math.floor(Math.random() * catchZone.names.length)];
+  const element = catchZone.elements[Math.floor(Math.random() * catchZone.elements.length)];
+  const atk     = level * 5 + Math.floor(Math.random() * 8) + 12;
+  const hp      = level * 8 + Math.floor(Math.random() * 12) + 25;
+
+  const enemy = {
+    name: name, level: level, element: element, atk: atk, hp: hp, maxHp: hp,
+    weakness: ELEMENT_WEAKNESS[element] || 'น้ำ',
+    sellPrice: level * 40 + 80,
+    zoneName: catchZone.name,
+    evolved: false
+  };
+
+  if (petInventory.length === 0) {
+    battleState = { myPet: null, enemy: enemy, isWild: true, canCatch: true };
+    mode = 'battle';
+    showBattleUI("คุณยังไม่มีสัตว์เลี้ยง\nใช้การโยนบอลเพื่อจับตัวแรก!");
+    return;
+  }
+
+  battleState = { myPet: null, enemy: enemy, isWild: true, canCatch: true };
+  mode = 'catch_select';
+  menuTitle = (fromRandom ? '!! สัตว์ป่าโผล่มา !!' : 'พบสัตว์ป่า') + '\n' + name + ' Lv.' + level + ' (' + element + ')!\nATK ' + atk + ' | HP ' + hp;
+  menuCursor = 0;
+  menuOptions = petInventory.map(function(p, i) {
+    return { id: i, label: p.name + ' Lv.' + p.level + ' (' + p.element + ') ATK' + p.atk + ' HP' + p.hp + '/' + (p.maxHp||p.hp) };
+  });
+  renderPetSelectMenu(menuTitle);
+}
+
+function renderPetSelectMenu(title) {
+  let t = (title || menuTitle || 'เลือกสัตว์เลี้ยง') + '\n\n';
+  menuOptions.forEach(function(opt, i) {
+    const mark = (i === menuCursor ? '▶ ' : '  ');
+    t += mark + opt.label + '\n\n';
+  });
+  t += 'ลูกศรขึ้น/ลง เลือก | Enter ยืนยัน | Esc ยกเลิก';
+  announce(t);
+  if (menuOptions[menuCursor]) {
+    const sr = document.getElementById('srAnnouncer');
+    if (sr) sr.innerText = 'เลือก ' + menuOptions[menuCursor].label;
+  }
+}
+
+
+
+
+function selectBattlePet(index) {
+  if (index < 0 || index >= petInventory.length) return;
+  const pet = petInventory[index];
+  battleState.myPet = {
+    name: pet.name, level: pet.level, element: pet.element,
+    atk: pet.atk, hp: pet.hp, maxHp: pet.maxHp || pet.hp,
+    weakness: pet.weakness
+  };
+  mode = 'battle';
+  showBattleUI();
+}
+
+// ============================================================
+// 6. ระบบต่อสู้ + เลือกสกิล
+// ============================================================
+function showBattleUI(extraMsg) {
+  if (!battleState) return;
+  buildBattleOptions();
+  menuCursor = 0;
+  renderBattleMenu(extraMsg);
+}
+
+function buildBattleOptions() {
+  menuOptions = [];
+  if (battleState.myPet) {
+    menuOptions.push({ id: 'normal', label: 'โจมตีปกติ' });
+    menuOptions.push({ id: 'heavy', label: 'โจมตีหนัก (แรงขึ้น แต่อาจพลาด)' });
+    menuOptions.push({ id: 'element', label: 'สกิลธาตุ ' + battleState.myPet.element + ' (ได้เปรียบธาตุ)' });
+  }
+  if (battleState.canCatch && battleState.isWild) {
+    menuOptions.push({ id: 'pokeball', label: 'โยน Pokeball' });
+    menuOptions.push({ id: 'greatball', label: 'โยน Great Ball' });
+    menuOptions.push({ id: 'ultraball', label: 'โยน Ultra Ball' });
+  }
+  menuOptions.push({ id: 'flee', label: 'หนี' });
+}
+
+function renderBattleMenu(extraMsg) {
+  if (!battleState) return;
+  const myPet = battleState.myPet;
+  const enemy = battleState.enemy;
+  let t = (extraMsg ? extraMsg + '\n\n' : '') + '=== การต่อสู้ ===\n\n';
+  if (myPet) {
+    t += 'คุณ: ' + myPet.name + ' Lv.' + myPet.level + ' (' + myPet.element + ')\n';
+    t += 'HP ' + myPet.hp + '/' + myPet.maxHp + ' | ATK ' + myPet.atk + '\n\n';
+  } else {
+    t += 'คุณ: (ยังไม่มีสัตว์เลี้ยง)\n\n';
+  }
+  t += 'ศัตรู: ' + enemy.name + ' Lv.' + enemy.level + ' (' + enemy.element + ')\n';
+  t += 'HP ' + Math.max(0, enemy.hp) + '/' + enemy.maxHp + ' | ATK ' + enemy.atk + '\n\n';
+  t += 'เลือกสกิล (ลูกศรขึ้น/ลง | Enter ใช้):\n\n';
+  menuOptions.forEach(function(opt, i) {
+    const mark = (i === menuCursor ? '▶ ' : '  ');
+    t += mark + opt.label + '\n\n';
+  });
+  announce(t);
+  if (menuOptions[menuCursor]) {
+    const sr = document.getElementById('srAnnouncer');
+    if (sr) sr.innerText = 'เลือก ' + menuOptions[menuCursor].label;
+  }
+}
+
+
+function doSkill(skill) {
+  if (mode !== 'battle' || !battleState) return;
+  const myPet = battleState.myPet;
+  const enemy = battleState.enemy;
+  const isWild = battleState.isWild;
+  const canCatch = battleState.canCatch;
+  let log = "";
+
+  if (skill === 'normal' || skill === 'heavy' || skill === 'element') {
+    if (!myPet) {
+      announce("คุณยังไม่มีสัตว์เลี้ยง ให้ใช้การโยนบอลแทน");
+      return;
+    }
+
+    let dmg = myPet.atk;
+    let miss = 0;
+
+    if (skill === 'heavy') {
+      dmg = Math.floor(dmg * 1.55);
+      miss = 0.22;
+    }
+    if (skill === 'element') {
+      dmg = Math.floor(dmg * 1.25);
+      if (ELEMENT_WEAKNESS[enemy.element] === myPet.element) {
+        dmg = Math.floor(dmg * 1.45);
+        log += "สกิลธาตุได้เปรียบ! ";
+      }
+    }
+
+    if (Math.random() < miss) {
+      log += "โจมตีพลาด!\n";
+    } else {
+      enemy.hp -= dmg;
+      log += "สร้างความเสียหาย " + dmg + " แต้ม!\n";
+      log += "HP ศัตรูเหลือ " + Math.max(0, enemy.hp) + "\n";
+    }
+
+    if (enemy.hp <= 0) {
+      const reward = isWild ? (30 + enemy.level * 12) : (80 + enemy.level * 25);
+      playerData.money += reward;
+      if (!isWild) playerData.arenaWins = (playerData.arenaWins || 0) + 1;
+      saveGame();
+      updateStatusBar();
+      announce(
+        "ชนะแล้ว!\nได้รับ " + reward + " G\n" +
+        (isWild ? "(มอนป่าถูกเอาชนะ)\n" : "ชัยชนะลานประลอง: " + playerData.arenaWins + "\n") +
+        "\nกด C หรือ R เพื่อหาต่อสู้ต่อ"
+      );
+      mode = 'explore';
+      battleState = null;
+      return;
+    }
+
+    log += enemyCounterAttack();
+    if (battleState && battleState.myPet && battleState.myPet.hp <= 0) {
+      announce(log + "\nสัตว์เลี้ยงของคุณหมดแรง!\nคุณแพ้การต่อสู้ครั้งนี้");
+      mode = 'explore';
+      battleState = null;
+      return;
+    }
+    announce(log + "\n" + getSkillPrompt());
+    return;
+  }
+
+  if (skill === 'pokeball' || skill === 'greatball' || skill === 'ultraball') {
+    if (!canCatch || !isWild) {
+      announce("ตอนนี้โยนบอลไม่ได้");
+      return;
+    }
+    throwBallInBattle(skill);
+    return;
+  }
+
+  if (skill === 'flee') {
+    announce("คุณหนีออกมาอย่างปลอดภัย");
+    mode = 'explore';
+    battleState = null;
+  }
+}
+
+function enemyCounterAttack() {
+  if (!battleState || !battleState.myPet) return "";
+  const myPet = battleState.myPet;
+  const enemy = battleState.enemy;
+  let dmg = enemy.atk;
+  if (ELEMENT_WEAKNESS[myPet.element] === enemy.element) {
+    dmg = Math.floor(dmg * 1.4);
+  }
+  dmg = Math.floor(dmg * (0.8 + Math.random() * 0.4));
+  myPet.hp -= dmg;
+  return "\n" + enemy.name + " โจมตีกลับ! ความเสียหาย " + dmg + "\nHP ของคุณเหลือ " + Math.max(0, myPet.hp) + "\n";
+}
+
+function getSkillPrompt() {
+  let t = "เลือกสกิล: 1 ปกติ | 2 หนัก | 3 ธาตุ";
+  if (battleState && battleState.canCatch) t += " | 4/5/6 โยนบอล";
+  t += " | F หนี";
+  return t;
+}
+
+function throwBallInBattle(type) {
+  const inv = playerData.inventory;
+  if ((inv[type] || 0) <= 0) {
+    announce("ไม่มี " + (SHOP_ITEMS[type] ? SHOP_ITEMS[type].name : type) + " เหลือแล้ว");
+    return;
+  }
+  inv[type]--;
+  updateStatusBar();
+  saveGame();
+
+  const enemy = battleState.enemy;
+  const base = Math.max(12, Math.round(88 - ((enemy.level - 1) / 49) * 70));
+  let bonus = type === 'greatball' ? 20 : type === 'ultraball' ? 42 : 0;
+  const hpRatio = Math.max(0.2, enemy.hp / enemy.maxHp);
+  const rate = Math.min(93, Math.floor((base + bonus) * (1.35 - hpRatio * 0.6)));
+  const roll = Math.random() * 100;
+
+  if (roll < rate) {
+    petInventory.push({
+      id: Date.now(),
+      name: enemy.name,
+      level: enemy.level,
+      element: enemy.element,
+      atk: enemy.atk,
+      hp: enemy.maxHp,
+      maxHp: enemy.maxHp,
+      weakness: enemy.weakness,
+      sellPrice: enemy.sellPrice,
+      evolved: false
+    });
+    saveGame();
+    announce("จับสำเร็จ!\n" + enemy.name + " Lv." + enemy.level + " เข้าคลังแล้ว\n(จากโซน: " + enemy.zoneName + ")");
+    mode = 'explore';
+    battleState = null;
+  } else {
+    let log = "โยนบอลพลาด! " + enemy.name + " ดิ้นหลุด\n";
+    if (Math.random() < 0.28) {
+      announce(log + enemy.name + " วิ่งหนีไปแล้ว");
+      mode = 'explore';
+      battleState = null;
+      return;
+    }
+    if (battleState.myPet) {
+      log += enemyCounterAttack();
+      if (battleState.myPet.hp <= 0) {
+        announce(log + "\nสัตว์เลี้ยงหมดแรง! คุณแพ้");
+        mode = 'explore';
+        battleState = null;
+        return;
+      }
+    }
+    announce(log + "\n" + getSkillPrompt());
+  }
+}
+
+// ============================================================
+// 7. ลานประลอง (นอกเมือง) ปุ่ม R
+// ============================================================
+function startArenaFromCity() {
+  if (petInventory.length === 0) {
+    announce("คุณยังไม่มีสัตว์เลี้ยงสำหรับต่อสู้\nไปจับมอนนอกเมืองก่อนนะ");
+    mode = 'explore';
+    return;
+  }
+  mode = 'arena_select';
+  menuTitle = 'ลานประลองไตรภูมิ\nชัยชนะสะสม: ' + (playerData.arenaWins || 0);
+  menuCursor = 0;
+  menuOptions = petInventory.map(function(p, i) {
+    return { id: i, label: p.name + ' Lv.' + p.level + ' (' + p.element + ') ATK' + p.atk + ' HP' + p.hp };
+  });
+  renderPetSelectMenu(menuTitle);
+}
+
+// เหลือไว้เผื่อเรียกจากที่อื่น (ไม่ใช้กด R นอกเมืองแล้ว)
+function showArena() {
+  const shop = getShopAt(r, c);
+  if (shop && shop.id === 'arena') {
+    startArenaFromCity();
+  } else {
+    announce("ลานประลองอยู่กลางเมืองหลวง\nเดินไปที่พิกัด 51, 51 แล้วกด Enter");
+  }
+}
+
+function selectArenaPet(index) {
+  if (index < 0 || index >= petInventory.length) return;
+  const pet = petInventory[index];
+  const win = playerData.arenaWins || 0;
+  let pool = ARENA_OPPONENTS;
+  if (win < 2) pool = ARENA_OPPONENTS.slice(0, 3);
+  else if (win < 5) pool = ARENA_OPPONENTS.slice(0, 5);
+  else if (win < 8) pool = ARENA_OPPONENTS.slice(1, 7);
+  else pool = ARENA_OPPONENTS.slice(3);
+
+  const opp = pool[Math.floor(Math.random() * pool.length)];
+  const enemy = {
+    name: opp.petName,
+    level: opp.level,
+    element: opp.element,
+    atk: opp.atk,
+    hp: opp.hp,
+    maxHp: opp.hp,
+    weakness: ELEMENT_WEAKNESS[opp.element] || 'น้ำ',
+    trainer: opp.name
+  };
+
+  battleState = {
+    myPet: { name: pet.name, level: pet.level, element: pet.element, atk: pet.atk, hp: pet.hp, maxHp: pet.maxHp || pet.hp, weakness: pet.weakness },
+    enemy: enemy,
+    isWild: false,
+    canCatch: false
+  };
+  mode = 'battle';
+  showBattleUI("พบคู่ต่อสู้: " + opp.name);
+}
+
+// ============================================================
+// 8. คลัง
+// ============================================================
+function showInventory() {
+  mode = 'inventory';
+  selectedPetIndex = -1;
+  menuCursor = 0;
+  if (petInventory.length === 0) {
+    menuOptions = [];
+    const inv = playerData.inventory || {};
+    announce(
+      '=== กระเป๋า ===\n' +
+      'เงิน: ' + playerData.money.toLocaleString() + ' G\n' +
+      'บอล: P' + (inv.pokeball||0) + ' G' + (inv.greatball||0) + ' U' + (inv.ultraball||0) + '\n' +
+      'หินวิวัฒนาการ: ' + (inv.evo_stone||0) + '\n\n' +
+      'ยังไม่มีสัตว์เลี้ยง\nกด Esc กลับ'
+    );
+    return;
+  }
+  menuOptions = petInventory.map(function(p, i) {
+    const evo = p.evolved ? ' ★' : (EVOLUTION_MAP[p.name] ? ' (วิวัฒนาการได้)' : '');
+    return {
+      id: i,
+      nameLine: p.name + evo,
+      statLine: 'Lv.' + p.level + ' | ' + p.element + ' | ATK ' + p.atk + ' | HP ' + p.hp + '/' + (p.maxHp||p.hp) + ' | ขาย ' + p.sellPrice + 'G',
+      label: p.name + evo
+    };
+  });
+  renderInventoryMenu();
+}
+
+function renderInventoryMenu() {
+  const inv = playerData.inventory || {};
+  let t = '=== กระเป๋า ===\n';
+  t += 'เงิน: ' + playerData.money.toLocaleString() + ' G\n';
+  t += 'บอล: P' + (inv.pokeball||0) + ' G' + (inv.greatball||0) + ' U' + (inv.ultraball||0) + '\n';
+  t += 'อาหาร: ไฟ' + (inv.food_fire||0) + ' น้ำ' + (inv.food_water||0) + ' พืช' + (inv.food_grass||0) + ' ไฟฟ้า' + (inv.food_electric||0) + ' หิน' + (inv.food_rock||0) + '\n';
+  t += 'หินวิวัฒนาการ: ' + (inv.evo_stone||0) + '\n';
+  t += 'สัตว์เลี้ยง: ' + petInventory.length + ' ตัว\n\n';
+
+  menuOptions.forEach(function(opt, i) {
+    if (i === menuCursor) {
+      t += '▶ ' + opt.nameLine + '\n';
+      t += '   ' + opt.statLine + '\n';
+    } else {
+      t += '  ' + opt.nameLine + '\n';
+      t += '   ' + opt.statLine + '\n';
+    }
+    t += '\n';
+  });
+  t += 'ลูกศรขึ้น/ลง เลือก | Enter เปิดเมนู | Esc กลับ';
+  announce(t);
+  if (menuOptions[menuCursor]) {
+    const o = menuOptions[menuCursor];
+    const sr = document.getElementById('srAnnouncer');
+    if (sr) sr.innerText = 'เลือก ' + o.nameLine + ' ' + o.statLine;
+  }
+}
+
+
+
+
+function openInvActionMenu() {
+  if (!menuOptions.length) return;
+  selectedPetIndex = menuOptions[menuCursor].id;
+  mode = 'inventory_action';
+  const p = petInventory[selectedPetIndex];
+  const inv = playerData.inventory || {};
+  const foodMap = { 'ไฟ':'food_fire','น้ำ':'food_water','พืช':'food_grass','ไฟฟ้า':'food_electric','หิน':'food_rock' };
+  const foodKey = foodMap[p.element];
+  const foodCount = foodKey ? (inv[foodKey]||0) : 0;
+  const evoCount = inv.evo_stone || 0;
+  menuCursor = 0;
+  menuOptions = [
+    { id: 'feed', label: 'ให้อาหารธาตุ' + p.element + '\n   (มีอาหาร ' + foodCount + ' ชิ้น | +เลเวล +ATK +HP)' },
+    { id: 'evolve', label: 'วิวัฒนาการ\n   (หินมี ' + evoCount + ' ก้อน | ต้องการ Lv.12+)' },
+    { id: 'sell', label: 'ขาย ' + p.name + '\n   (ได้ ' + p.sellPrice + ' G | เงินตอนนี้ ' + playerData.money.toLocaleString() + ' G)' },
+    { id: 'back', label: 'กลับไปรายการสัตว์' }
+  ];
+  menuTitle = p.name + ' Lv.' + p.level + ' (' + p.element + ')';
+  renderInvActionMenu();
+}
+
+function renderInvActionMenu() {
+  let t = '=== จัดการสัตว์ ===\n';
+  t += menuTitle + '\n';
+  t += 'เงินในกระเป๋า: ' + playerData.money.toLocaleString() + ' G\n\n';
+  menuOptions.forEach(function(opt, i) {
+    const lines = String(opt.label).split('\n');
+    if (i === menuCursor) {
+      t += '▶ ' + lines[0] + '\n';
+      for (let k = 1; k < lines.length; k++) t += '   ' + lines[k] + '\n';
+    } else {
+      t += '  ' + lines[0] + '\n';
+      for (let k = 1; k < lines.length; k++) t += '   ' + lines[k] + '\n';
+    }
+    t += '\n';
+  });
+  t += 'ลูกศรขึ้น/ลง เลือก | Enter ยืนยัน | Esc กลับ';
+  announce(t);
+  if (menuOptions[menuCursor]) {
+    const sr = document.getElementById('srAnnouncer');
+    if (sr) sr.innerText = 'เลือก ' + String(menuOptions[menuCursor].label).replace(/\n/g, ' ');
+  }
+}
+
+
+
+
+function feedPet(index) {
+  if (index < 0 || index >= petInventory.length) return;
+  const pet = petInventory[index];
+  const foodMap = { 'ไฟ':'food_fire','น้ำ':'food_water','พืช':'food_grass','ไฟฟ้า':'food_electric','หิน':'food_rock' };
+  const foodKey = foodMap[pet.element];
+  if (!foodKey || (playerData.inventory[foodKey]||0) <= 0) {
+    announce("ไม่มีอาหารธาตุ" + pet.element);
+    return;
+  }
+  playerData.inventory[foodKey]--;
+  pet.level += 1;
+  pet.atk += 4 + Math.floor(Math.random()*3);
+  const addHp = 6 + Math.floor(Math.random()*4);
+  pet.maxHp = (pet.maxHp || pet.hp) + addHp;
+  pet.hp = pet.maxHp;
+  pet.sellPrice = Math.floor(pet.level * 42 + 80);
+  saveGame();
+  updateStatusBar();
+  announce("ให้อาหาร " + pet.name + " สำเร็จ!\nLv." + pet.level + " | ATK " + pet.atk + " | HP " + pet.hp);
+}
+
+function evolvePet(index) {
+  if (index < 0 || index >= petInventory.length) return;
+  const pet = petInventory[index];
+  if (pet.evolved) { announce(pet.name + " วิวัฒนาการไปแล้ว"); return; }
+  if (!EVOLUTION_MAP[pet.name]) { announce(pet.name + " วิวัฒนาการไม่ได้"); return; }
+  if (pet.level < 12) { announce("เลเวลยังไม่พอ (ต้องการ ≥ 12)"); return; }
+  if ((playerData.inventory.evo_stone||0) <= 0) {
+    announce("ไม่มีหินวิวัฒนาการ\nไปซื้อที่ร้านหินวิวัฒนาการในเมือง");
+    return;
+  }
+  playerData.inventory.evo_stone--;
+  const old = pet.name;
+  pet.name = EVOLUTION_MAP[old];
+  pet.evolved = true;
+  pet.level += 2;
+  pet.atk = Math.floor(pet.atk * 1.35) + 8;
+  pet.maxHp = Math.floor((pet.maxHp||pet.hp) * 1.30) + 15;
+  pet.hp = pet.maxHp;
+  pet.sellPrice = Math.floor(pet.level * 55 + 150);
+  saveGame();
+  updateStatusBar();
+  announce("วิวัฒนาการ!\n" + old + " → " + pet.name + "\nLv." + pet.level + " | ATK " + pet.atk + " | HP " + pet.hp);
+}
+
+function sellPet(index) {
+  if (index < 0 || index >= petInventory.length) return;
+  const pet = petInventory[index];
+  playerData.money += pet.sellPrice;
+  petInventory.splice(index, 1);
+  saveGame();
+  updateStatusBar();
+  announce("ขาย " + pet.name + " ได้ " + pet.sellPrice + " G");
+}
+
+
+let bgmStarted = false;
+function startBGM() {
+  if (!bgmStarted) { bgm.play().catch(function(){}); bgmStarted = true; }
+}
+
+
+// ===== แชท =====
+const CHAT_KEY = 'tri_monster_chat_v2';
+let chatMessages = [];
+let chatReadIndex = -1;
+let chatReplyTo = null;
+
+function loadChat() {
+  try {
+    chatMessages = JSON.parse(localStorage.getItem(CHAT_KEY) || '[]');
+  } catch (e) { chatMessages = []; }
+  if (!chatMessages.length) {
+    chatMessages.push({ from: 'ระบบ', text: 'ยินดีต้อนรับสู่แชทโลกไตรภูมิ' });
+    saveChat();
+  }
+}
+function saveChat() {
+  try {
+    if (chatMessages.length > 80) chatMessages = chatMessages.slice(-80);
+    localStorage.setItem(CHAT_KEY, JSON.stringify(chatMessages));
+  } catch (e) {}
+}
+function renderChatLog() {
+  const log = document.getElementById('chatLog');
+  if (!log) return;
+  let t = '';
+  chatMessages.forEach(function(m, i) {
+    t += (i === chatReadIndex ? '▶ ' : '') + '[' + m.from + ']' +
+      (m.replyTo ? ' (ตอบ: ' + m.replyTo + ')' : '') + ' ' + m.text + '\n';
+  });
+  log.textContent = t || '(ยังไม่มีข้อความ)';
+  log.scrollTop = log.scrollHeight;
+}
+function focusGame() {
+  const inp = document.getElementById('chatInput');
+  if (inp) inp.blur();
+  const body = document.getElementById('gameBody');
+  if (body) body.focus();
+}
+function chatReadPrev() {
+  if (!chatMessages.length) return;
+  if (chatReadIndex < 0) chatReadIndex = chatMessages.length - 1;
+  else chatReadIndex = Math.max(0, chatReadIndex - 1);
+  renderChatLog();
+  const m = chatMessages[chatReadIndex];
+  announce('อ่าน (' + (chatReadIndex+1) + '/' + chatMessages.length + ')\n[' + m.from + '] ' + m.text);
+}
+function chatReadNext() {
+  if (!chatMessages.length) return;
+  if (chatReadIndex < 0) chatReadIndex = 0;
+  else chatReadIndex = Math.min(chatMessages.length - 1, chatReadIndex + 1);
+  renderChatLog();
+  const m = chatMessages[chatReadIndex];
+  announce('อ่าน (' + (chatReadIndex+1) + '/' + chatMessages.length + ')\n[' + m.from + '] ' + m.text);
+}
+function startChatType() {
+  const inp = document.getElementById('chatInput');
+  if (!inp) return;
+  if (chatReadIndex >= 0 && chatMessages[chatReadIndex]) {
+    const m = chatMessages[chatReadIndex];
+    chatReplyTo = m.from + ': ' + m.text.slice(0, 28);
+    inp.placeholder = 'ตอบ [' + m.from + '] ...';
+    announce('ตอบ [' + m.from + '] — พิมพ์แล้วกด Enter\n(Esc ยกเลิก)');
+  } else {
+    chatReplyTo = null;
+    inp.placeholder = 'พิมพ์ข้อความแล้วกด Enter...';
+    announce('พิมพ์แชท — พิมพ์แล้วกด Enter เพื่อส่ง\n(Esc ยกเลิก)');
+  }
+  inp.focus();
+}
+function sendChat() {
+  const inp = document.getElementById('chatInput');
+  if (!inp) return;
+  const msg = (inp.value || '').trim();
+  if (!msg) {
+    focusGame();
+    return;
+  }
+  chatMessages.push({
+    from: 'คุณ',
+    text: msg,
+    replyTo: chatReplyTo || null
+  });
+  saveChat();
+  chatReadIndex = chatMessages.length - 1;
+  chatReplyTo = null;
+  inp.value = '';
+  inp.placeholder = 'กด / เพื่อพิมพ์แชท...';
+  renderChatLog();
+  announce('ส่งแล้ว: ' + msg + '\nกลับไปเล่นเกมได้เลย');
+  // สำคัญ: ออกจากช่องพิมพ์ กลับไปควบคุมเกม
+  focusGame();
+  // จำลองข้อความตอบกลับบ้าง
+  if (Math.random() < 0.4) {
+    setTimeout(function() {
+      const npcs = [
+        ['นักเดินทาง', 'เดินทางปลอดภัยนะ'],
+        ['พ่อค้า', 'แวะร้านในเมืองได้เสมอ'],
+        ['นักรบ', 'ลานประลองรอท้าทายอยู่'],
+        ['ระบบ', 'ข้อความถูกส่งสู่โลกไตรภูมิ']
+      ];
+      const n = npcs[Math.floor(Math.random()*npcs.length)];
+      chatMessages.push({ from: n[0], text: n[1] });
+      saveChat();
+      renderChatLog();
+    }, 900);
+  }
+}
+function cancelChat() {
+  const inp = document.getElementById('chatInput');
+  chatReplyTo = null;
+  if (inp) {
+    inp.value = '';
+    inp.placeholder = 'กด / เพื่อพิมพ์แชท...';
+  }
+  focusGame();
+  announce('ยกเลิกการพิมพ์แชท');
+}
+
+
+window.addEventListener('keydown', function(e) {
+  const code = e.code;
+  const key = e.key;
+  const inp = document.getElementById('chatInput');
+  const typing = (inp && document.activeElement === inp);
+
+  // กำลังพิมพ์แชท
+  if (typing) {
+    if (code === 'Enter') {
+      e.preventDefault();
+      sendChat(); // ส่งแล้ว blur กลับเกม
+      return;
+    }
+    if (code === 'Escape') {
+      e.preventDefault();
+      cancelChat();
+      return;
+    }
+    // ปล่อยให้พิมพ์ตัวอักษรได้ ไม่วิ่งคำสั่งเกม
+    return;
+  }
+
+  // / = เริ่มพิมพ์หรือตอบแชท
+  if (key === '/') {
+    e.preventDefault();
+    startChatType();
+    return;
+  }
+  if (key === '[') {
+    e.preventDefault();
+    chatReadPrev();
+    return;
+  }
+  if (key === ']') {
+    e.preventDefault();
+    chatReadNext();
+    return;
+  }
+
+  if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","KeyW","KeyA","KeyS","KeyD"].includes(code)) {
+    e.preventDefault();
+  }
+  startBGM();
+
+  if (mode === 'explore') {
+    // หน้าเดิน: ลูกศร + WASD = เดินทั้งหมด
+    if (code === 'ArrowUp' || code === 'KeyW') move(-1, 0);
+    else if (code === 'ArrowDown' || code === 'KeyS') move(1, 0);
+    else if (code === 'ArrowLeft' || code === 'KeyA') move(0, -1);
+    else if (code === 'ArrowRight' || code === 'KeyD') move(0, 1);
+    else if (code === 'Enter') tryInteract();
+    else if (code === 'KeyB') checkCurrentPosition();
+    else if (code === 'KeyC') startSearch();
+    else if (code === 'KeyR') showArena(); // บอกตำแหน่งลานประลองในเมือง
+    else if (code === 'KeyI') showInventory();
+    else if (code === 'KeyM') {
+      announce(
+        "=== เมนูช่วยเหลือ ===\n\n" +
+        "ลูกศร / WASD = เดิน (หน้าสำรวจ)\n" +
+        "ลูกศรขึ้น/ลง = เลือกเมนู (ร้าน/คลัง/ต่อสู้)\n" +
+        "Enter = เปิดร้าน / ยืนยันเมนู\n" +
+        "[ ] = อ่านแชท | / = พิมพ์แชท\n" +
+        "C = ค้นหาสัตว์ป่าเอง (นอกเมือง)\n" +
+        "เดินนอกเมือง = มีโอกาสเจอมอนโผล่เอง\n" +
+        "I = คลังสัตว์เลี้ยง\n" +
+        "B = เช็คพิกัด\n\n" +
+        "ในเมือง (เดินไปยืนแล้วกด Enter):\n" +
+        "• แถว 49 หลัก 51 = ร้านลูกบอล\n" +
+        "• แถว 51 หลัก 49 = ร้านอาหาร\n" +
+        "• แถว 53 หลัก 51 = ร้านหินวิวัฒนาการ\n" +
+        "• แถว 51 หลัก 51 = ลานประลอง\n" +
+        "• แถว 51 หลัก 53 = ศูนย์ข้อมูล\n\n" +
+        "ในเมือง = ร้าน + ลานประลอง\n" +
+        "นอกเมือง = มอนโผล่ตอนเดิน / กด C ค้นหา"
+      );
+    }
+  }
+  else if (mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' || mode === 'battle' || mode === 'inventory' || mode === 'inventory_action') {
+    if (code === 'ArrowUp' || code === 'KeyW') {
+      menuMove(-1);
+      e.preventDefault();
+    } else if (code === 'ArrowDown' || code === 'KeyS') {
+      menuMove(1);
+      e.preventDefault();
+    } else if (code === 'Enter') {
+      e.preventDefault();
+      if (mode === 'shop') {
+        if (menuOptions[menuCursor]) buy(menuOptions[menuCursor].id);
+        // refresh shop list counts
+        const inv = playerData.inventory;
+        menuOptions.forEach(function(opt) {
+          if (opt.id === 'pokeball') opt.label = 'Pokeball ธรรมดา  100G  (มี ' + (inv.pokeball||0) + ')';
+          if (opt.id === 'greatball') opt.label = 'Great Ball       300G  (มี ' + (inv.greatball||0) + ')';
+          if (opt.id === 'ultraball') opt.label = 'Ultra Ball       800G  (มี ' + (inv.ultraball||0) + ')';
+          if (opt.id === 'food_fire') opt.label = 'อาหารธาตุไฟ      80G  (มี ' + (inv.food_fire||0) + ')';
+          if (opt.id === 'food_water') opt.label = 'อาหารธาตุน้ำ     80G  (มี ' + (inv.food_water||0) + ')';
+          if (opt.id === 'food_grass') opt.label = 'อาหารธาตุพืช     80G  (มี ' + (inv.food_grass||0) + ')';
+          if (opt.id === 'food_electric') opt.label = 'อาหารธาตุไฟฟ้า 100G  (มี ' + (inv.food_electric||0) + ')';
+          if (opt.id === 'food_rock') opt.label = 'อาหารธาตุหิน     80G  (มี ' + (inv.food_rock||0) + ')';
+          if (opt.id === 'evo_stone') opt.label = 'หินวิวัฒนาการ  500G  (มี ' + (inv.evo_stone||0) + ')';
+        });
+        renderMenu(menuTitle || 'ร้านค้า', 'ลูกศรขึ้น/ลง เลือก | Enter ซื้อ | Esc กลับ');
+      } else if (mode === 'catch_select') {
+        if (menuOptions[menuCursor]) selectBattlePet(menuOptions[menuCursor].id);
+      } else if (mode === 'arena_select') {
+        if (menuOptions[menuCursor]) selectArenaPet(menuOptions[menuCursor].id);
+      } else if (mode === 'battle') {
+        if (menuOptions[menuCursor]) doSkill(menuOptions[menuCursor].id);
+        if (mode === 'battle') {
+          buildBattleOptions();
+          renderBattleMenu();
+        }
+      } else if (mode === 'inventory') {
+        openInvActionMenu();
+      } else if (mode === 'inventory_action') {
+        const act = menuOptions[menuCursor] && menuOptions[menuCursor].id;
+        if (act === 'feed') { feedPet(selectedPetIndex); showInventory(); }
+        else if (act === 'evolve') { evolvePet(selectedPetIndex); showInventory(); }
+        else if (act === 'sell') { sellPet(selectedPetIndex); showInventory(); }
+        else { showInventory(); }
+      }
+    } else if (code === 'Escape' || code === 'KeyB') {
+      if (mode === 'inventory_action') {
+        showInventory();
+      } else if (mode === 'catch_select') {
+        mode = 'explore'; battleState = null;
+        announce('คุณหนีจากสัตว์ป่า');
+      } else if (mode === 'battle') {
+        doSkill('flee');
+      } else {
+        mode = 'explore';
+        menuOptions = [];
+        announce('กลับสู่โหมดสำรวจ');
+      }
+    }
+  }
+});
+
+window.onload = function() {
+  document.getElementById('gameBody').focus();
+  loadGame();
+  loadChat();
+  if (chatMessages.length) chatReadIndex = chatMessages.length - 1;
+  renderChatLog();
+  announce(
+    "ยินดีต้อนรับสู่ ไตรภูมิ Monster Quest!\n\n" +
+    "คุณอยู่ที่เมืองหลวงไตรภูมิ\n\n" +
+    "ในเมือง (เดินไปยืน แล้วกด Enter):\n" +
+    "• ร้านลูกบอล → แถว 49 หลัก 51\n" +
+    "• ร้านอาหาร → แถว 51 หลัก 49\n" +
+    "• ร้านหิน → แถว 53 หลัก 51\n" +
+    "• ลานประลอง → แถว 51 หลัก 51\n\n" +
+    "นอกเมือง:\n" +
+    "• เดินสำรวจ → มอนอาจโผล่มาเอง\n" +
+    "• กด C = ค้นหาสัตว์ป่าเอง\n\n" +
+    "กด M ดูคำสั่งทั้งหมด"
+  );
+};
+</script>
+</body>
+</html>
