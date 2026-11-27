@@ -146,13 +146,18 @@ function announce(text, speakAll) {
 // อ่านเฉพาะข้อความที่ส่งมา — ใช้ทุกครั้งที่ต้องการให้อ่านจอพูด
 // เคลียร์ก่อนใส่ใหม่ เพื่อบังคับให้อ่านซ้ำได้
 function speakOnly(line) {
+  if (window._a11yQuiet) return; // TalkBack กำลังอ่านปุ่มรายการเอง
   const sr = document.getElementById('srAnnouncer');
   if (!sr) return;
   var t = String(line || '').replace(/^\s*▶\s*/g, '').replace(/\n+/g, '. ').trim();
   if (!t) return;
+  // เคลียร์ก่อน แล้วสลับ role ชั่วคราวเป็น alert เพื่อให้ TalkBack/VoiceOver ตัดข้อความเก่าแล้วอ่านใหม่
   sr.innerText = '';
-  // ใช้ค่าว่างแล้วใส่ใหม่ในเฟรมถัดไป ให้อ่านจอรับรู้การเปลี่ยน
+  sr.setAttribute('role', 'alert');
   setTimeout(function() {
     sr.innerText = t;
-  }, 30);
+    setTimeout(function() {
+      sr.setAttribute('role', 'status');
+    }, 400);
+  }, 40);
 }

@@ -14,7 +14,7 @@
     <button type="button" id="startBtn">เริ่มเกม</button>
   </div>
 
-  <div id="gameBody" tabindex="0" role="application" aria-label="ไตรภูมิ Monster Quest เกมสำรวจและจับมอนสเตอร์ กดลูกศรเพื่อเดิน Enter เพื่อยืนยัน">
+  <div id="gameBody" tabindex="0" aria-label="ไตรภูมิ Monster Quest">
     <div class="status" aria-live="off">
       <span>บอล: <span id="ball-count">0</span> | อาหาร: <span id="food-count">0</span> | หิน: <span id="evo-count">0</span></span>
       <span class="money">เหรียญ: <span id="money">1,000</span> G</span>
@@ -34,15 +34,22 @@
     </div>
   </div>
 
+  <!-- รายการเข้าถึงได้สำหรับ TalkBack/VoiceOver — ปัดซ้ายขวาเลื่อน แตะสองครั้งเลือก -->
+  <div id="a11yListPanel" style="display:none;" role="region" aria-label="รายการเมนู">
+    <div id="a11yListTitle" class="a11y-list-title"></div>
+    <div id="a11yList" role="listbox" aria-label="รายการ" aria-activedescendant=""></div>
+    <div class="a11y-list-hint">ปัดซ้ายหรือขวาเพื่อเลื่อนรายการ แล้วแตะสองครั้งเพื่อเลือก</div>
+  </div>
+
   <!-- Mobile controls — ปุ่มทิศทาง + คำสั่ง อ่านด้วย TalkBack/VoiceOver ได้เหมือน NVDA -->
   <div id="mobileControls" style="display:none;" role="group" aria-label="แผงควบคุมเกมมือถือ">
     <div class="mc-row">
-      <div class="dpad-grid" role="group" aria-label="ปุ่มเดิน">
-        <button type="button" class="mc-btn mc-dir dir-up" data-dir="up" aria-label="เดินขึ้น กดค้างเพื่อเดินต่อ">▲ ขึ้น</button>
-        <button type="button" class="mc-btn mc-dir dir-left" data-dir="left" aria-label="เดินซ้าย กดค้างเพื่อเดินต่อ">◀ ซ้าย</button>
+      <div class="dpad-grid" role="group" aria-label="ปุ่มทิศทาง ขึ้นลงซ้ายขวา">
+        <button type="button" class="mc-btn mc-dir dir-up" data-dir="up" aria-label="ขึ้น">▲ ขึ้น</button>
+        <button type="button" class="mc-btn mc-dir dir-left" data-dir="left" aria-label="ซ้าย">◀ ซ้าย</button>
         <div class="mc-btn dir-center" aria-hidden="true">เดิน</div>
-        <button type="button" class="mc-btn mc-dir dir-right" data-dir="right" aria-label="เดินขวา กดค้างเพื่อเดินต่อ">ขวา ▶</button>
-        <button type="button" class="mc-btn mc-dir dir-down" data-dir="down" aria-label="เดินลง กดค้างเพื่อเดินต่อ">▼ ลง</button>
+        <button type="button" class="mc-btn mc-dir dir-right" data-dir="right" aria-label="ขวา">ขวา ▶</button>
+        <button type="button" class="mc-btn mc-dir dir-down" data-dir="down" aria-label="ลง">▼ ลง</button>
       </div>
       <div class="action-btns" role="group" aria-label="ปุ่มคำสั่ง">
         <button type="button" class="mc-btn primary" data-action="enter" aria-label="ยืนยัน หรือเปิดร้าน">ยืนยัน</button>
@@ -56,7 +63,7 @@
     <div class="mc-hint" id="mobileHint">กดค้างปุ่มทิศทางเพื่อเดิน · ปุ่มคำสั่งด้านล่าง · ข้อความเกมอ่านอัตโนมัติ</div>
   </div>
 
-  <div id="srAnnouncer" class="sr-only" aria-live="assertive"></div>
+  <div id="srAnnouncer" class="sr-only" aria-live="assertive" aria-atomic="true" role="status"></div>
 
   <script src="01_map_audio.js"></script>
   <script src="02_data_save.js"></script>
