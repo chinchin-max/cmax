@@ -81,11 +81,21 @@ window.addEventListener('keydown', function(e) {
     } else if (code === 'ArrowDown' || code === 'KeyS') {
       menuMove(1);
       e.preventDefault();
+    } else if (code === 'ArrowLeft' || code === 'KeyA') {
+      menuMove(-1);
+      e.preventDefault();
+    } else if (code === 'ArrowRight' || code === 'KeyD') {
+      menuMove(1);
+      e.preventDefault();
     } else if (code === 'Enter') {
       e.preventDefault();
       handleConfirm();
-    } else if (code === 'Escape' || code === 'KeyB') {
+    } else if (code === 'Escape') {
       handleEsc();
+    } else if (code === 'KeyB') {
+      // อ่านรายการปัจจุบันซ้ำ เหมือน NVDA
+      e.preventDefault();
+      if (typeof rereadCurrentMenuItem === 'function') rereadCurrentMenuItem();
     }
   }
 });
@@ -143,15 +153,18 @@ function handleEsc() {
   if (mode === 'inventory_action' || mode === 'inventory_feed_select' || mode === 'inventory_evo_select') {
     showInventory();
   } else if (mode === 'catch_select') {
-    mode = 'explore'; battleState = null;
+    if (typeof endBattleToExplore === 'function') endBattleToExplore();
+    else { mode = 'explore'; battleState = null; }
     announce('คุณหนีจากสัตว์ป่า');
   } else if (mode === 'battle') {
     doSkill('flee');
   } else if (mode !== 'explore') {
     mode = 'explore';
     menuOptions = [];
+    if (typeof hideA11yList === 'function') hideA11yList();
     announce('กลับสู่โหมดสำรวจ');
   }
+  if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
 }
 
 // ============================================================

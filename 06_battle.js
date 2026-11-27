@@ -51,6 +51,17 @@ function renderBattleMenu(extraMsg) {
 }
 
 
+
+// ปิดหน้าเลือกสกิล/เมนูต่อสู้ กลับหน้าสำรวจ (มือถือจะซ่อนแผงรายการ)
+function endBattleToExplore() {
+  mode = 'explore';
+  battleState = null;
+  menuOptions = [];
+  menuCursor = 0;
+  if (typeof hideA11yList === 'function') hideA11yList();
+  if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
+}
+
 function doSkill(skill) {
   if (mode !== 'battle' || !battleState) return;
   const myPet = battleState.myPet;
@@ -103,8 +114,7 @@ function doSkill(skill) {
         (isWild ? "(มอนป่าถูกเอาชนะ)\n" : "ชัยชนะลานประลอง: " + playerData.arenaWins + "\n") +
         "\nกด C หรือ R เพื่อหาต่อสู้ต่อ"
       );
-      mode = 'explore';
-      battleState = null;
+      endBattleToExplore();
       return;
     }
 
@@ -112,8 +122,7 @@ function doSkill(skill) {
     if (battleState && battleState.myPet && battleState.myPet.hp <= 0) {
       playSfx('lose');
       announce(log + "\nสัตว์เลี้ยงของคุณหมดแรง!\nคุณแพ้การต่อสู้ครั้งนี้");
-      mode = 'explore';
-      battleState = null;
+      endBattleToExplore();
       return;
     }
     announce(log + "\n" + getSkillPrompt());
@@ -133,8 +142,7 @@ function doSkill(skill) {
   if (skill === 'flee') {
     playSfx('flee');
     announce("คุณหนีออกมาอย่างปลอดภัย");
-    mode = 'explore';
-    battleState = null;
+    endBattleToExplore();
   }
 }
 
@@ -194,16 +202,14 @@ function throwBallInBattle(type) {
     saveGame();
     playSfx('catch_ok');
     announce("จับสำเร็จ!\n" + enemy.name + " Lv." + enemy.level + " เข้าคลังแล้ว\n(จากโซน: " + enemy.zoneName + ")");
-    mode = 'explore';
-    battleState = null;
+    endBattleToExplore();
   } else {
     playSfx('catch_fail');
     let log = "โยนบอลพลาด! " + enemy.name + " ดิ้นหลุด\n";
     if (Math.random() < 0.28) {
       playSfx('flee');
       announce(log + enemy.name + " วิ่งหนีไปแล้ว");
-      mode = 'explore';
-      battleState = null;
+      endBattleToExplore();
       return;
     }
     if (battleState.myPet) {
@@ -211,8 +217,7 @@ function throwBallInBattle(type) {
       if (battleState.myPet.hp <= 0) {
         playSfx('lose');
         announce(log + "\nสัตว์เลี้ยงหมดแรง! คุณแพ้");
-        mode = 'explore';
-        battleState = null;
+        endBattleToExplore();
         return;
       }
     }
