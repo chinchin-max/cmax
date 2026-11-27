@@ -122,9 +122,19 @@ function handleConfirm() {
     if (menuOptions[menuCursor]) selectArenaPet(menuOptions[menuCursor].id);
   } else if (mode === 'battle') {
     if (menuOptions[menuCursor]) doSkill(menuOptions[menuCursor].id);
-    if (mode === 'battle') {
+    // ถ้าศัตรูตาย/จบแล้ว mode จะไม่ใช่ battle — ห้ามเปิดแผงสกิลซ้ำ
+    if (mode === 'battle' && battleState) {
       buildBattleOptions();
       renderBattleMenu();
+      if (typeof syncA11yList === 'function') syncA11yList('การต่อสู้', false);
+    } else {
+      if (typeof endBattleToExplore === 'function') {
+        // ซ้ำได้ ปลอดภัย — กันแผงค้าง
+        endBattleToExplore();
+      } else {
+        if (typeof hideA11yList === 'function') hideA11yList();
+        if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
+      }
     }
   } else if (mode === 'inventory') {
     openInvActionMenu();

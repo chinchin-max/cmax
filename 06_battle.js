@@ -58,8 +58,20 @@ function endBattleToExplore() {
   battleState = null;
   menuOptions = [];
   menuCursor = 0;
+  menuTitle = '';
+  // บังคับปิดแผงเลือกสกิลบนมือถือทันทีเมื่อศัตรูตาย/จบไฟท์
+  var panel = document.getElementById('a11yListPanel');
+  if (panel) {
+    panel.style.display = 'none';
+    panel.classList.remove('visible');
+    panel.setAttribute('aria-hidden', 'true');
+  }
+  var list = document.getElementById('a11yList');
+  if (list) list.innerHTML = '';
+  document.body.classList.remove('mode-menu');
   if (typeof hideA11yList === 'function') hideA11yList();
   if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
+  if (typeof setActiveTab === 'function') setActiveTab('map');
 }
 
 function doSkill(skill) {

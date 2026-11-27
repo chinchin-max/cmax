@@ -309,6 +309,11 @@ function syncA11yList(titleText, preferFocus) {
           else if (mode === 'inventory_evo_select') renderEvoSelectMenu(false);
           // ยืนยันเลือกรายการนี้
           if (typeof handleConfirm === 'function') handleConfirm();
+          // ถ้าจบต่อสู้แล้ว ให้ปิดแผง
+          if (mode === 'explore' || !battleState) {
+            if (typeof hideA11yList === 'function') hideA11yList();
+            if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
+          }
         });
       }
       list.appendChild(btn);
