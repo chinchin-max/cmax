@@ -13,7 +13,8 @@ function setupFocusOnTap() {
     setTimeout(function() {
       const ae = document.activeElement;
       if (ae && (ae.id === 'chatInput' || ae.id === 'chatCloseBtn')) return;
-      if (ae && ae.classList && ae.classList.contains('mc-btn')) return;
+      if (ae && ae.classList && (ae.classList.contains('mc-btn') || ae.classList.contains('a11y-option'))) return;
+      if (ae && ae.closest && ae.closest('#a11yListPanel')) return;
       focusGame();
     }, 0);
   });
@@ -36,6 +37,7 @@ window.onload = function() {
   if (chatMessages.length) chatReadIndex = chatMessages.length - 1;
   setupJoystick();
   setupActionButtons();
+  if (typeof setupSheetBack === 'function') setupSheetBack();
   setupFocusOnTap();
 
   // ปุ่มเริ่มเกม (ถ้ายังแสดงอยู่)

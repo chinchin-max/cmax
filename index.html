@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<!-- หน้าจอเริ่มเกม (ซ่อนอัตโนมัติหลังโหลด — role=application จะเข้าโหมดโฟกัสเอง) -->
   <div id="startScreen" class="hidden" aria-hidden="true">
     <h1>ไตรภูมิ Monster Quest</h1>
     <p>กำลังเข้าสู่เกม...</p>
@@ -34,34 +33,54 @@
     </div>
   </div>
 
-  <!-- รายการเข้าถึงได้สำหรับ TalkBack/VoiceOver — ปัดซ้ายขวาเลื่อน แตะสองครั้งเลือก -->
-  <div id="a11yListPanel" style="display:none;" role="region" aria-label="รายการเมนู">
-    <div id="a11yListTitle" class="a11y-list-title"></div>
-    <div id="a11yList" role="listbox" aria-label="รายการ" aria-activedescendant=""></div>
-    <div class="a11y-list-hint">ปัดซ้ายหรือขวาเพื่อเลื่อนรายการ แล้วแตะสองครั้งเพื่อเลือก</div>
+  <!-- แผงรายการของแต่ละหน้า (คลัง/ร้าน/ต่อสู้) -->
+  <div id="a11yListPanel" style="display:none;" role="region" aria-label="เมนูหน้ารายการ">
+    <div class="sheet-header">
+      <div id="a11yListTitle" class="a11y-list-title"></div>
+      <button type="button" id="sheetBackBtn" class="sheet-back-btn" aria-label="กลับ">กลับ</button>
+    </div>
+    <div id="a11yList" role="listbox" aria-label="เลือกรายการ" aria-activedescendant=""></div>
+    <div class="a11y-list-hint">แตะรายการเพื่อเลือก · ปัดซ้ายขวาได้เมื่อใช้ TalkBack</div>
   </div>
 
-  <!-- Mobile controls — ปุ่มทิศทาง + คำสั่ง อ่านด้วย TalkBack/VoiceOver ได้เหมือน NVDA -->
-  <div id="mobileControls" style="display:none;" role="group" aria-label="แผงควบคุมเกมมือถือ แถบเมนูด้านล่าง">
+  <!-- แถบนำทางมือถือมาตรฐาน -->
+  <div id="mobileControls" style="display:none;" role="navigation" aria-label="เมนูมือถือ">
     <div class="mc-inner">
-    <div class="mc-row">
-      <div class="dpad-grid" role="group" aria-label="ปุ่มทิศทาง ขึ้นลงซ้ายขวา">
-        <button type="button" class="mc-btn mc-dir dir-up" data-dir="up" aria-label="ขึ้น">▲ ขึ้น</button>
-        <button type="button" class="mc-btn mc-dir dir-left" data-dir="left" aria-label="ซ้าย">◀ ซ้าย</button>
-        <div class="mc-btn dir-center" aria-hidden="true">เดิน</div>
-        <button type="button" class="mc-btn mc-dir dir-right" data-dir="right" aria-label="ขวา">ขวา ▶</button>
-        <button type="button" class="mc-btn mc-dir dir-down" data-dir="down" aria-label="ลง">▼ ลง</button>
+      <!-- โซนเดิน — แสดงเฉพาะหน้าสำรวจ -->
+      <div id="explorePad" class="explore-pad" role="group" aria-label="ปุ่มเดิน">
+        <div class="dpad-grid">
+          <button type="button" class="mc-btn mc-dir dir-up" data-dir="up" aria-label="เดินขึ้น">▲</button>
+          <button type="button" class="mc-btn mc-dir dir-left" data-dir="left" aria-label="เดินซ้าย">◀</button>
+          <div class="mc-btn dir-center" aria-hidden="true">เดิน</div>
+          <button type="button" class="mc-btn mc-dir dir-right" data-dir="right" aria-label="เดินขวา">▶</button>
+          <button type="button" class="mc-btn mc-dir dir-down" data-dir="down" aria-label="เดินลง">▼</button>
+        </div>
+        <div class="explore-actions">
+          <button type="button" class="mc-btn primary" data-action="enter" aria-label="ยืนยัน หรือเปิดร้าน">ยืนยัน</button>
+          <button type="button" class="mc-btn" data-action="b" aria-label="เช็คพิกัด">พิกัด</button>
+        </div>
       </div>
-      <div class="action-btns" role="group" aria-label="ปุ่มคำสั่ง">
-        <button type="button" class="mc-btn primary" data-action="enter" aria-label="ยืนยัน หรือเปิดร้าน">ยืนยัน</button>
-        <button type="button" class="mc-btn" data-action="esc" aria-label="กลับ หรือหนี">กลับ</button>
-        <button type="button" class="mc-btn" data-action="c" aria-label="ค้นหาสัตว์ป่า">ค้นหามอน</button>
-        <button type="button" class="mc-btn" data-action="i" aria-label="เปิดคลังสัตว์เลี้ยง">คลัง</button>
-        <button type="button" class="mc-btn" data-action="b" aria-label="เช็คพิกัดปัจจุบัน">พิกัด</button>
-        <button type="button" class="mc-btn" data-action="m" aria-label="เมนูช่วยเหลือ">ช่วยเหลือ</button>
-      </div>
-    </div>
-    <div class="mc-hint" id="mobileHint">แถบเมนูด้านล่าง · ขึ้นลงซ้ายขวาเดิน · ยืนยัน/คลัง/ค้นหามอน</div>
+
+      <!-- แถบแท็บหลักด้านล่าง -->
+      <nav class="bottom-tabs" role="tablist" aria-label="เมนูหลัก">
+        <button type="button" class="tab-btn active" data-tab="map" data-action="tab-map" aria-label="หน้าแผนที่" role="tab" aria-selected="true">
+          <span class="tab-icon" aria-hidden="true">🗺</span>
+          <span class="tab-label">แผนที่</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="bag" data-action="tab-bag" aria-label="หน้าคลัง" role="tab" aria-selected="false">
+          <span class="tab-icon" aria-hidden="true">🎒</span>
+          <span class="tab-label">คลัง</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="search" data-action="tab-search" aria-label="ค้นหามอน" role="tab" aria-selected="false">
+          <span class="tab-icon" aria-hidden="true">🔍</span>
+          <span class="tab-label">ค้นหา</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="more" data-action="tab-more" aria-label="เมนูเพิ่มเติม" role="tab" aria-selected="false">
+          <span class="tab-icon" aria-hidden="true">☰</span>
+          <span class="tab-label">เมนู</span>
+        </button>
+      </nav>
+      <div class="mc-hint" id="mobileHint">เลือกเมนูด้านล่างเพื่อสลับหน้า</div>
     </div>
   </div>
 
