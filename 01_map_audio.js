@@ -133,13 +133,26 @@ function getShopAt(row, col) {
   return CITY_SHOPS[row + "," + col] || null;
 }
 
-function announce(text) {
+// announce(text, speakAll)
+// speakAll === false → อัปเดตหน้าจออย่างเดียว ไม่อ่านออกเสียง
+// speakAll ปกติ → อ่านข้อความผ่าน srAnnouncer เท่านั้น (ไม่ผ่าน #display)
+function announce(text, speakAll) {
   const disp = document.getElementById('display');
-  const sr = document.getElementById('srAnnouncer');
   if (disp) disp.innerText = text;
-  // เคลียร์แล้วใส่ใหม่ เพื่อให้ screen reader อ่านซ้ำได้
-  if (sr) {
-    sr.innerText = '';
-    setTimeout(function() { sr.innerText = text; }, 20);
-  }
+  if (speakAll === false) return;
+  speakOnly(text);
+}
+
+// อ่านเฉพาะข้อความที่ส่งมา — ใช้ทุกครั้งที่ต้องการให้อ่านจอพูด
+// เคลียร์ก่อนใส่ใหม่ เพื่อบังคับให้อ่านซ้ำได้
+function speakOnly(line) {
+  const sr = document.getElementById('srAnnouncer');
+  if (!sr) return;
+  var t = String(line || '').replace(/^\s*▶\s*/g, '').replace(/\n+/g, '. ').trim();
+  if (!t) return;
+  sr.innerText = '';
+  // ใช้ค่าว่างแล้วใส่ใหม่ในเฟรมถัดไป ให้อ่านจอรับรู้การเปลี่ยน
+  setTimeout(function() {
+    sr.innerText = t;
+  }, 30);
 }

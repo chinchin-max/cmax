@@ -53,10 +53,9 @@ function renderPetSelectMenu(title) {
     t += mark + opt.label + '\n\n';
   });
   t += 'ลูกศรขึ้น/ลง เลือก | Enter ยืนยัน | Esc ยกเลิก';
-  announce(t);
+  announce(t, false);
   if (menuOptions[menuCursor]) {
-    const sr = document.getElementById('srAnnouncer');
-    if (sr) sr.innerText = 'เลือก ' + menuOptions[menuCursor].label;
+    speakOnly((menuCursor + 1) + ' จาก ' + menuOptions.length + '. ' + menuOptions[menuCursor].label);
   }
 }
 

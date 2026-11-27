@@ -26,14 +26,15 @@ function showInventory() {
       if (menuOptions[i].kind !== 'separator') { menuCursor = i; break; }
     }
   }
-  renderInventoryMenu();
+  playSfx('menu');
+  renderInventoryMenu(true); // true = เปิดใหม่ ให้อ่านหัวข้อกระเป๋าก่อน
 }
 
 function buildInventoryOptions() {
   const inv = playerData.inventory || {};
   menuOptions = [];
 
-  // === ไอเทม (แต่ละชิ้นเป็นรายการแยก) ===
+  // === ไอเทมทีละรายการ ===
   BAG_ITEM_DEFS.forEach(function(def) {
     const count = inv[def.key] || 0;
     menuOptions.push({
@@ -44,7 +45,8 @@ function buildInventoryOptions() {
       name: def.name,
       count: count,
       nameLine: def.name + ' × ' + count,
-      label: def.name + ' × ' + count
+      label: def.name + ' มี ' + count,
+      speak: def.name + '. มี ' + count
     });
   });
 
@@ -53,26 +55,45 @@ function buildInventoryOptions() {
     menuOptions.push({
       kind: 'separator',
       nameLine: '--- สัตว์เลี้ยง (' + petInventory.length + ' ตัว) ---',
-      label: 'สัตว์เลี้ยง'
+      label: 'สัตว์เลี้ยง',
+      speak: 'สัตว์เลี้ยง'
     });
 
     petInventory.forEach(function(p, i) {
-      const star = p.evolved ? '★' : '';
-      const line = p.name + star + ' Lv.' + p.level + ' ' + p.element +
+      const line = p.name + (p.evolved ? '★' : '') + ' Lv.' + p.level + ' ' + p.element +
                    ' ATK' + p.atk + ' HP' + p.hp + '/' + (p.maxHp || p.hp);
+      // พูดสั้น ชัด: ชื่อ เลเวล ธาตุ
       menuOptions.push({
         kind: 'pet',
         id: i,
         name: p.name,
         nameLine: line,
-        label: line
+        label: line,
+        speak: p.name + '. เลเวล ' + p.level + '. ธาตุ' + p.element
       });
     });
   }
 }
 
-function renderInventoryMenu() {
-  let t = '=== กระเป๋า ===\n';
+// นับเฉพาะรายการที่เลือกได้ (ไม่นับ separator) สำหรับพูดตำแหน่ง
+function inventorySelectableCount() {
+  var n = 0;
+  for (var i = 0; i < menuOptions.length; i++) {
+    if (menuOptions[i].kind !== 'separator') n++;
+  }
+  return n;
+}
+
+function inventorySelectableIndex(cursor) {
+  var n = 0;
+  for (var i = 0; i <= cursor && i < menuOptions.length; i++) {
+    if (menuOptions[i].kind !== 'separator') n++;
+  }
+  return n;
+}
+
+function renderInventoryMenu(isOpen) {
+  var t = '=== กระเป๋า ===\n';
   t += 'เงิน: ' + playerData.money.toLocaleString() + ' G\n\n';
 
   menuOptions.forEach(function(opt, i) {
@@ -80,24 +101,43 @@ function renderInventoryMenu() {
       t += opt.nameLine + '\n';
       return;
     }
-    const mark = (i === menuCursor) ? '▶ ' : '  ';
+    var mark = (i === menuCursor) ? '▶ ' : '  ';
     t += mark + opt.nameLine + '\n';
   });
 
-  t += '\n↑↓ เลือก · Enter ใช้ · Esc กลับ';
+  t += '\n↑↓ เลื่อนรายการ · Enter ใช้ · Esc กลับ';
 
-  // แสดงรายการทั้งหมดบนหน้าจอ
-  // แต่ให้อ่านจอพูดแค่รายการที่เลือกอยู่เท่านั้น
+  // แสดงทั้งลิสต์บนจอ แต่ให้อ่านจออ่านทีละรายการเท่านั้น
   announce(t, false);
-  if (menuOptions[menuCursor] && menuOptions[menuCursor].kind !== 'separator') {
-    speakOnly(menuOptions[menuCursor].nameLine);
+
+  var opt = menuOptions[menuCursor];
+  if (!opt) return;
+
+  var pos = inventorySelectableIndex(menuCursor);
+  var total = inventorySelectableCount();
+  // พูดสั้น: ตำแหน่ง + ชื่อรายการ เท่านั้น
+  var spoken;
+  if (opt.kind === 'separator') {
+    spoken = (opt.speak || 'หมวดถัดไป');
+  } else {
+    spoken = pos + ' จาก ' + total + '. ' + (opt.speak || opt.label);
+  }
+
+  if (isOpen) {
+    speakOnly('กระเป๋า. เงิน ' + playerData.money.toLocaleString() + ' จี. ' + spoken);
+  } else {
+    speakOnly(spoken);
   }
 }
 
 function openInvActionMenu() {
   if (!menuOptions.length) return;
   const opt = menuOptions[menuCursor];
-  if (!opt || opt.kind === 'separator') return;
+  if (!opt || opt.kind === 'separator') {
+    // ถ้าอยู่บน separator ให้เลื่อนไปรายการถัดไปแล้วหยุด
+    menuMove(1);
+    return;
+  }
 
   // ---- เลือกไอเทม ----
   if (opt.kind === 'item') {
@@ -118,13 +158,13 @@ function openInvActionMenu() {
 
     menuCursor = 0;
     menuOptions = [
-      { id: 'feed',   label: 'ให้อาหารธาตุ' + p.element + ' (มี ' + foodCount + ')' },
-      { id: 'evolve', label: 'วิวัฒนาการ (หิน ' + evoCount + ' | ต้องการ Lv.12+)' },
-      { id: 'sell',   label: 'ขาย ' + p.name + ' ได้ ' + p.sellPrice + ' G' },
-      { id: 'back',   label: 'กลับ' }
+      { id: 'feed',   label: 'ให้อาหารธาตุ' + p.element + ' มี ' + foodCount + ' ชิ้น', speak: 'ให้อาหารธาตุ' + p.element + ' มี ' + foodCount + ' ชิ้น' },
+      { id: 'evolve', label: 'วิวัฒนาการ หิน ' + evoCount + ' ต้องการเลเวล 12 ขึ้นไป', speak: 'วิวัฒนาการ หินเหลือ ' + evoCount + ' ต้องการเลเวล 12 ขึ้นไป' },
+      { id: 'sell',   label: 'ขาย ' + p.name + ' ได้ ' + p.sellPrice + ' G', speak: 'ขาย ' + p.name + ' ได้ ' + p.sellPrice + ' เหรียญ' },
+      { id: 'back',   label: 'กลับ', speak: 'กลับไปกระเป๋า' }
     ];
     menuTitle = p.name + ' Lv.' + p.level + ' (' + p.element + ')';
-    renderInvActionMenu();
+    renderInvActionMenu(true);
   }
 }
 
@@ -140,7 +180,7 @@ function handleUseItem(opt) {
 
   if (opt.type === 'ball') {
     playSfx('menu');
-    announce(opt.name + ' × ' + count + '\nใช้ได้เฉพาะตอนต่อสู้กับมอนป่า\n\nEsc กลับ');
+    announce(opt.name + ' มี ' + count + ' ชิ้น\nใช้ได้เฉพาะตอนต่อสู้กับมอนป่า\n\nEsc กลับ');
     return;
   }
 
@@ -156,16 +196,17 @@ function handleUseItem(opt) {
     }
     mode = 'inventory_feed_select';
     menuCursor = 0;
-    menuTitle = 'ให้อาหาร ' + opt.name + ' (เหลือ ' + count + ')';
+    menuTitle = 'ให้อาหาร ' + opt.name + ' เหลือ ' + count;
     menuOptions = matching.map(function(m) {
       const p = m.pet;
       return {
         id: m.index,
         nameLine: p.name + ' Lv.' + p.level + ' HP' + p.hp + '/' + (p.maxHp || p.hp),
-        label: p.name + ' Lv.' + p.level
+        label: p.name + ' Lv.' + p.level,
+        speak: p.name + ' เลเวล ' + p.level + ' เลือด ' + p.hp + ' จาก ' + (p.maxHp || p.hp)
       };
     });
-    renderFeedSelectMenu();
+    renderFeedSelectMenu(true);
     return;
   }
 
@@ -178,57 +219,71 @@ function handleUseItem(opt) {
     });
     if (evoPets.length === 0) {
       playSfx('error');
-      announce('ไม่มีสัตว์ที่วิวัฒนาการได้\n(ต้อง Lv.12+ และยังไม่เคยวิวัฒนาการ)\n\nEsc กลับ');
+      announce('ไม่มีสัตว์ที่วิวัฒนาการได้\nต้องเลเวล 12 ขึ้นไป และยังไม่เคยวิวัฒนาการ\n\nEsc กลับ');
       return;
     }
     mode = 'inventory_evo_select';
     menuCursor = 0;
-    menuTitle = 'ใช้หินวิวัฒนาการ (เหลือ ' + count + ')';
+    menuTitle = 'ใช้หินวิวัฒนาการ เหลือ ' + count;
     menuOptions = evoPets.map(function(m) {
       const p = m.pet;
       return {
         id: m.index,
         nameLine: p.name + ' → ' + EVOLUTION_MAP[p.name] + ' (Lv.' + p.level + ')',
-        label: p.name + ' → ' + EVOLUTION_MAP[p.name]
+        label: p.name + ' → ' + EVOLUTION_MAP[p.name],
+        speak: p.name + ' วิวัฒนาการเป็น ' + EVOLUTION_MAP[p.name] + ' เลเวล ' + p.level
       };
     });
-    renderEvoSelectMenu();
+    renderEvoSelectMenu(true);
     return;
   }
 }
 
-function renderFeedSelectMenu() {
+function renderFeedSelectMenu(isOpen) {
   let t = menuTitle + '\n\n';
   menuOptions.forEach(function(opt, i) {
     const mark = (i === menuCursor) ? '▶ ' : '  ';
     t += mark + opt.nameLine + '\n';
   });
-  t += '\n↑↓ เลือก · Enter ให้อาหาร · Esc กลับ';
+  t += '\n↑↓ เลื่อน · Enter ให้อาหาร · Esc กลับ';
   announce(t, false);
-  if (menuOptions[menuCursor]) speakOnly(menuOptions[menuCursor].nameLine);
+  if (!menuOptions[menuCursor]) return;
+  var spoken = 'รายการ ' + (menuCursor + 1) + ' จาก ' + menuOptions.length + ' ' +
+    (menuOptions[menuCursor].speak || menuOptions[menuCursor].label);
+  if (isOpen) speakOnly(menuTitle + '. ' + spoken);
+  else speakOnly(spoken);
 }
 
-function renderEvoSelectMenu() {
+function renderEvoSelectMenu(isOpen) {
   let t = menuTitle + '\n\n';
   menuOptions.forEach(function(opt, i) {
     const mark = (i === menuCursor) ? '▶ ' : '  ';
     t += mark + opt.nameLine + '\n';
   });
-  t += '\n↑↓ เลือก · Enter วิวัฒนาการ · Esc กลับ';
+  t += '\n↑↓ เลื่อน · Enter วิวัฒนาการ · Esc กลับ';
   announce(t, false);
-  if (menuOptions[menuCursor]) speakOnly(menuOptions[menuCursor].nameLine);
+  if (!menuOptions[menuCursor]) return;
+  var spoken = 'รายการ ' + (menuCursor + 1) + ' จาก ' + menuOptions.length + ' ' +
+    (menuOptions[menuCursor].speak || menuOptions[menuCursor].label);
+  if (isOpen) speakOnly(menuTitle + '. ' + spoken);
+  else speakOnly(spoken);
 }
 
-function renderInvActionMenu() {
+function renderInvActionMenu(isOpen) {
   let t = menuTitle + '\n\n';
   menuOptions.forEach(function(opt, i) {
     const mark = (i === menuCursor) ? '▶ ' : '  ';
     t += mark + opt.label + '\n';
   });
-  t += '\n↑↓ เลือก · Enter ยืนยัน · Esc กลับ';
+  t += '\n↑↓ เลื่อน · Enter ยืนยัน · Esc กลับ';
   announce(t, false);
-  if (menuOptions[menuCursor]) speakOnly(menuOptions[menuCursor].label);
+  if (!menuOptions[menuCursor]) return;
+  var spoken = 'รายการ ' + (menuCursor + 1) + ' จาก ' + menuOptions.length + ' ' +
+    (menuOptions[menuCursor].speak || menuOptions[menuCursor].label);
+  if (isOpen) speakOnly(menuTitle + '. ' + spoken);
+  else speakOnly(spoken);
 }
+
 
 function feedPet(index) {
   if (index < 0 || index >= petInventory.length) return;

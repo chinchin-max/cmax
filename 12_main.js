@@ -59,7 +59,11 @@ window.onload = function() {
     } else {
       const inp = document.getElementById('chatInput');
       if (inp && document.activeElement === inp) return;
-      // คงโฟกัสที่เกมไว้ตลอดตอนเล่น
+      const ae = document.activeElement;
+      // อย่าแย่งโฟกัสจากปุ่มมือถือ / chat
+      if (ae && ae.classList && ae.classList.contains('mc-btn')) return;
+      if (ae && ae.closest && ae.closest('#mobileControls')) return;
+      // คงโฟกัสที่เกมไว้ตลอดตอนเล่น (เดสก์ท็อป)
       const body = document.getElementById('gameBody');
       if (body && document.activeElement !== body && document.activeElement !== inp) {
         body.focus({ preventScroll: true });

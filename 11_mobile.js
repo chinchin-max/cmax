@@ -14,6 +14,7 @@ function showMobileControls() {
   if (isTouchDevice() || window.innerWidth < 900) {
     el.style.display = 'block';
     el.classList.add('visible');
+    el.classList.add('force-show'); // กัน media query ซ่อนบนจอบางเครื่อง
     const help = document.getElementById('helpText');
     if (help) {
       help.textContent = 'ปุ่มขึ้นลงซ้ายขวา = เดิน (กดค้างได้) · ยืนยัน/กลับ/ค้นหามอน/คลัง';
@@ -51,10 +52,15 @@ function lockFocusOnInteraction(e) {
   const t = e.target;
   if (t && (t.id === 'chatInput' || t.id === 'chatCloseBtn' || t.id === 'startBtn')) return;
   if (t && t.closest && t.closest('#chatPanel') && t.tagName === 'INPUT') return;
+  // อย่าแย่งโฟกัสจากปุ่มควบคุมมือถือ — สำคัญสำหรับ TalkBack/VoiceOver
+  if (t && t.closest && t.closest('#mobileControls')) return;
+  if (t && t.classList && t.classList.contains('mc-btn')) return;
   if (!gameStarted) {
     startGame();
     return;
   }
+  // บนมือถือไม่บังคับโฟกัสกลับทันที (กันปุ่มกดไม่ได้)
+  if (isTouchDevice()) return;
   focusGame();
 }
 
@@ -97,10 +103,16 @@ function stopDirHold() {
 function setupJoystick() {
   document.querySelectorAll('.mc-dir[data-dir]').forEach(function(btn) {
     const dir = dirFromName(btn.getAttribute('data-dir'));
+    let usedTouch = false;
 
     function onDown(e) {
       // ไม่ preventDefault ทุกกรณี — ให้ TalkBack เปิดใช้งานปุ่มได้
-      if (e.type === 'touchstart') e.preventDefault();
+      if (e.type === 'touchstart') {
+        usedTouch = true;
+        e.preventDefault();
+      } else {
+        usedTouch = false;
+      }
       startBGM();
       btn.classList.add('pressed');
       startDirHold(dir.dr, dir.dc);
@@ -110,8 +122,13 @@ function setupJoystick() {
       stopDirHold();
     }
     function onClick(e) {
-      // TalkBack มักส่ง click แทน touch — เดินทีละก้าว
       e.preventDefault();
+      // ถ้าเพิ่งใช้ touch ไปแล้ว อย่าเดินซ้ำจาก click
+      if (usedTouch) {
+        usedTouch = false;
+        return;
+      }
+      // TalkBack / เมาส์: เดินทีละก้าว
       startBGM();
       applyDirection(dir.dr, dir.dc);
     }
@@ -129,9 +146,17 @@ function setupJoystick() {
 function setupActionButtons() {
   document.querySelectorAll('.mc-btn[data-action]').forEach(function(btn) {
     const action = btn.getAttribute('data-action');
+    let lastFire = 0;
     function fire(e) {
-      e.preventDefault();
-      e.stopPropagation();
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      // กันกดซ้ำจาก touchend + click
+      const now = Date.now();
+      if (now - lastFire < 280) return;
+      lastFire = now;
+
       startBGM();
       btn.classList.add('pressed');
       setTimeout(function() { btn.classList.remove('pressed'); }, 120);
@@ -169,12 +194,13 @@ function setupActionButtons() {
           );
         }
       }
-      // หลังใช้คำสั่ง ให้โฟกัสกลับพื้นที่เกม (role=application)
-      setTimeout(focusGame, 30);
+      // หลังใช้คำสั่ง: เดสก์ท็อปดึงโฟกัสกลับเกม / มือถือปล่อยไว้ที่ปุ่ม (TalkBack)
+      if (!isTouchDevice()) {
+        setTimeout(focusGame, 30);
+      }
     }
     btn.addEventListener('click', fire);
     btn.addEventListener('touchend', function(e) {
-      // กัน double-fire กับ click บนบางเครื่อง
       if (e.cancelable) e.preventDefault();
       fire(e);
     }, { passive: false });

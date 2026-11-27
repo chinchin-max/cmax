@@ -41,10 +41,9 @@ function renderBattleMenu(extraMsg) {
     const mark = (i === menuCursor ? '▶ ' : '  ');
     t += mark + opt.label + '\n\n';
   });
-  announce(t);
+  announce(t, false);
   if (menuOptions[menuCursor]) {
-    const sr = document.getElementById('srAnnouncer');
-    if (sr) sr.innerText = 'เลือก ' + menuOptions[menuCursor].label;
+    speakOnly((menuCursor + 1) + ' จาก ' + menuOptions.length + '. ' + menuOptions[menuCursor].label);
   }
 }
 

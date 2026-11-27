@@ -13,7 +13,7 @@ function openShopById(shopId) {
       { id: 'greatball', label: 'Great Ball       300G  (มี ' + (inv.greatball||0) + ')' },
       { id: 'ultraball', label: 'Ultra Ball       800G  (มี ' + (inv.ultraball||0) + ')' }
     ];
-    menuTitle = 'ร้านลูกบอล'; renderMenu(menuTitle, 'ลูกศรขึ้น/ลง เลือก | Enter ซื้อ | Esc กลับ');
+    menuTitle = 'ร้านลูกบอล'; renderMenu(menuTitle, 'ลูกศรขึ้น/ลง เลือก | Enter ซื้อ | Esc กลับ', true);
   } else if (shopId === 'food_shop') {
     menuOptions = [
       { id: 'food_fire', label: 'อาหารธาตุไฟ      80G  (มี ' + (inv.food_fire||0) + ')' },
@@ -22,12 +22,12 @@ function openShopById(shopId) {
       { id: 'food_electric', label: 'อาหารธาตุไฟฟ้า 100G  (มี ' + (inv.food_electric||0) + ')' },
       { id: 'food_rock', label: 'อาหารธาตุหิน     80G  (มี ' + (inv.food_rock||0) + ')' }
     ];
-    menuTitle = 'ร้านอาหารสัตว์'; renderMenu(menuTitle, 'ลูกศรขึ้น/ลง เลือก | Enter ซื้อ | Esc กลับ');
+    menuTitle = 'ร้านอาหารสัตว์'; renderMenu(menuTitle, 'ลูกศรขึ้น/ลง เลือก | Enter ซื้อ | Esc กลับ', true);
   } else if (shopId === 'evo_shop') {
     menuOptions = [
       { id: 'evo_stone', label: 'หินวิวัฒนาการ  500G  (มี ' + (inv.evo_stone||0) + ')' }
     ];
-    menuTitle = 'ร้านหินวิวัฒนาการ'; renderMenu(menuTitle, 'Enter ซื้อ | Esc กลับ');
+    menuTitle = 'ร้านหินวิวัฒนาการ'; renderMenu(menuTitle, 'Enter ซื้อ | Esc กลับ', true);
   } else if (shopId === 'info_center') {
     mode = 'explore';
     menuOptions = [];
@@ -48,18 +48,19 @@ function openShopById(shopId) {
   }
 }
 
-function renderMenu(title, hint) {
+function renderMenu(title, hint, isOpen) {
   let t = title + "\n\n";
   menuOptions.forEach(function(opt, i) {
     const mark = (i === menuCursor ? "▶ " : "  ");
     t += mark + opt.label + "\n\n";
   });
   t += (hint || "ลูกศรขึ้น/ลง เลือก | Enter ยืนยัน | Esc กลับ");
-  announce(t);
-  if (menuOptions[menuCursor]) {
-    const sr = document.getElementById('srAnnouncer');
-    if (sr) sr.innerText = 'เลือก ' + menuOptions[menuCursor].label;
-  }
+  // แสดงทั้งเมนูบนจอ ไม่อ่านทั้งก้อน
+  announce(t, false);
+  if (!menuOptions[menuCursor]) return;
+  var line = (menuCursor + 1) + ' จาก ' + menuOptions.length + '. ' + menuOptions[menuCursor].label;
+  if (isOpen) speakOnly(title + '. ' + line);
+  else speakOnly(line);
 }
 
 function menuMove(delta) {
