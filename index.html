@@ -42,7 +42,8 @@
   </div>
 
   <!-- Mobile controls — ปุ่มทิศทาง + คำสั่ง อ่านด้วย TalkBack/VoiceOver ได้เหมือน NVDA -->
-  <div id="mobileControls" style="display:none;" role="group" aria-label="แผงควบคุมเกมมือถือ">
+  <div id="mobileControls" style="display:none;" role="group" aria-label="แผงควบคุมเกมมือถือ แถบเมนูด้านล่าง">
+    <div class="mc-inner">
     <div class="mc-row">
       <div class="dpad-grid" role="group" aria-label="ปุ่มทิศทาง ขึ้นลงซ้ายขวา">
         <button type="button" class="mc-btn mc-dir dir-up" data-dir="up" aria-label="ขึ้น">▲ ขึ้น</button>
@@ -60,7 +61,8 @@
         <button type="button" class="mc-btn" data-action="m" aria-label="เมนูช่วยเหลือ">ช่วยเหลือ</button>
       </div>
     </div>
-    <div class="mc-hint" id="mobileHint">กดค้างปุ่มทิศทางเพื่อเดิน · ปุ่มคำสั่งด้านล่าง · ข้อความเกมอ่านอัตโนมัติ</div>
+    <div class="mc-hint" id="mobileHint">แถบเมนูด้านล่าง · ขึ้นลงซ้ายขวาเดิน · ยืนยัน/คลัง/ค้นหามอน</div>
+    </div>
   </div>
 
   <div id="srAnnouncer" class="sr-only" aria-live="assertive" aria-atomic="true" role="status"></div>
