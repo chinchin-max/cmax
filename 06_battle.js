@@ -6,6 +6,8 @@ function showBattleUI(extraMsg) {
   buildBattleOptions();
   menuCursor = 0;
   renderBattleMenu(extraMsg);
+  if (typeof enterListNavigation === 'function') enterListNavigation('การต่อสู้');
+  else if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
 }
 
 function buildBattleOptions() {
@@ -45,6 +47,7 @@ function renderBattleMenu(extraMsg) {
   if (menuOptions[menuCursor]) {
     speakOnly((menuCursor + 1) + ' จาก ' + menuOptions.length + '. ' + menuOptions[menuCursor].label);
   }
+  if (typeof syncA11yList === 'function') syncA11yList('การต่อสู้', false);
 }
 
 

@@ -33,12 +33,26 @@ function renderChatLog() {
 function focusGame() {
   const inp = document.getElementById('chatInput');
   if (inp && document.activeElement === inp) return; // กำลังพิมพ์แชท — ไม่แย่งโฟกัส
+  // ถ้าโฟกัสอยู่ที่รายการกระเป๋า/เมนู — อย่าแย่ง (TalkBack ต้องปัดรายการต่อได้)
+  var ae = document.activeElement;
+  if (ae && ae.classList && ae.classList.contains('a11y-option')) return;
+  if (ae && ae.closest && ae.closest('#a11yListPanel')) return;
+  var panel = document.getElementById('a11yListPanel');
+  if (panel && panel.classList.contains('visible') && (('ontouchstart' in window) || (navigator.maxTouchPoints > 0))) {
+    return;
+  }
   if (inp) inp.blur();
   const body = document.getElementById('gameBody');
   if (body) {
-    // role="application" ทำให้ NVDA/JAWS เข้าโหมดโฟกัสอัตโนมัติ ไม่ต้องกด Insert+Space
-    if (!body.getAttribute('role')) body.setAttribute('role', 'application');
     body.setAttribute('tabindex', '0');
+    // เดสก์ท็อป + NVDA: ใช้ role=application
+    // มือถือ + TalkBack/VoiceOver: อย่าใช้ application จะวนโฟกัสในปุ่มไม่ได้
+    var touch = (typeof isTouchDevice === 'function') ? isTouchDevice() : (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
+    if (touch) {
+      body.removeAttribute('role');
+    } else {
+      body.setAttribute('role', 'application');
+    }
     try {
       body.focus({ preventScroll: true });
     } catch (e) {

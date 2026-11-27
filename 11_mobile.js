@@ -177,6 +177,35 @@ function isMenuMode() {
     mode === 'inventory_feed_select' || mode === 'inventory_evo_select';
 }
 
+
+// เข้าโหมดปัดรายการ — ซ่อนการพึ่งปุ่มเดิน โฟกัสรายการแรกให้ TalkBack
+function enterListNavigation(title) {
+  if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
+  if (typeof syncA11yList === 'function') {
+    syncA11yList(title || menuTitle || 'รายการ', true);
+  }
+  // โฟกัสซ้ำหลายรอบ กันถูกแย่งโฟกัสตอนเปิดแผง
+  var tries = 0;
+  function focusFirst() {
+    tries++;
+    var list = document.getElementById('a11yList');
+    if (!list) return;
+    var el = null;
+    for (var i = 0; i < list.children.length; i++) {
+      if (!list.children[i].disabled) { el = list.children[i]; break; }
+    }
+    if (!el && menuCursor >= 0 && list.children[menuCursor]) el = list.children[menuCursor];
+    if (el) {
+      try { el.focus({ preventScroll: true }); } catch (e) { try { el.focus(); } catch (e2) {} }
+    } else if (tries < 6) {
+      setTimeout(focusFirst, 50);
+    }
+  }
+  setTimeout(focusFirst, 30);
+  setTimeout(focusFirst, 120);
+  setTimeout(focusFirst, 280);
+}
+
 function hideA11yList() {
   var panel = document.getElementById('a11yListPanel');
   if (panel) {
@@ -226,6 +255,7 @@ function syncA11yList(titleText, preferFocus) {
       btn.className = 'a11y-option' + (opt.kind === 'separator' ? ' separator' : '');
       btn.id = 'a11y-opt-' + i;
       btn.setAttribute('role', 'option');
+      if (opt.kind !== 'separator') btn.setAttribute('tabindex', '0');
       var label = opt.speak || opt.label || opt.nameLine || ('รายการ ' + (i + 1));
       btn.setAttribute('data-label', label);
       btn.setAttribute('data-index', String(i));
@@ -293,8 +323,11 @@ function syncA11yList(titleText, preferFocus) {
     el.setAttribute('aria-selected', selected ? 'true' : 'false');
     if (selected) {
       activeId = el.id;
-      if (preferFocus && el.kind !== 'separator' && !el.disabled) {
-        try { el.focus({ preventScroll: false }); } catch (e) { try { el.focus(); } catch (e2) {} }
+      if (preferFocus && !el.disabled) {
+        // โฟกัสรายการเพื่อให้ TalkBack ปัดต่อได้ทันที ไม่ต้องไปที่ปุ่มเดิน
+        setTimeout(function() {
+          try { el.focus({ preventScroll: true }); } catch (e) { try { el.focus(); } catch (e2) {} }
+        }, 80);
       }
     }
   }

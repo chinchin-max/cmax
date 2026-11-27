@@ -28,6 +28,15 @@ function showInventory() {
   }
   playSfx('menu');
   renderInventoryMenu(true); // true = เปิดใหม่ ให้อ่านหัวข้อกระเป๋าก่อน
+  // มือถือ/TalkBack: เข้าลิสต์ทันที ปัดอ่านได้ ไม่ต้องใช้ปุ่มเดิน
+  if (typeof enterListNavigation === 'function') {
+    enterListNavigation('กระเป๋า');
+  } else {
+    if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
+    if (typeof syncA11yList === 'function') {
+      setTimeout(function() { syncA11yList('กระเป๋า', true); }, 50);
+    }
+  }
 }
 
 function buildInventoryOptions() {
@@ -128,6 +137,7 @@ function renderInventoryMenu(isOpen) {
   } else {
     speakOnly(spoken);
   }
+  if (typeof syncA11yList === 'function') syncA11yList('กระเป๋า', !!isOpen);
 }
 
 function openInvActionMenu() {
@@ -252,7 +262,9 @@ function renderFeedSelectMenu(isOpen) {
     (menuOptions[menuCursor].speak || menuOptions[menuCursor].label);
   if (isOpen) speakOnly(menuTitle + '. ' + spoken);
   else speakOnly(spoken);
+  if (typeof syncA11yList === 'function') syncA11yList(menuTitle || 'รายการ', !!isOpen);
 }
+
 
 function renderEvoSelectMenu(isOpen) {
   let t = menuTitle + '\n\n';
@@ -267,7 +279,9 @@ function renderEvoSelectMenu(isOpen) {
     (menuOptions[menuCursor].speak || menuOptions[menuCursor].label);
   if (isOpen) speakOnly(menuTitle + '. ' + spoken);
   else speakOnly(spoken);
+  if (typeof syncA11yList === 'function') syncA11yList(menuTitle || 'รายการ', !!isOpen);
 }
+
 
 function renderInvActionMenu(isOpen) {
   let t = menuTitle + '\n\n';
@@ -282,6 +296,7 @@ function renderInvActionMenu(isOpen) {
     (menuOptions[menuCursor].speak || menuOptions[menuCursor].label);
   if (isOpen) speakOnly(menuTitle + '. ' + spoken);
   else speakOnly(spoken);
+  if (typeof syncA11yList === 'function') syncA11yList(menuTitle || 'รายการ', !!isOpen);
 }
 
 
@@ -345,8 +360,31 @@ function sellPet(index) {
 
 let bgmStarted = false;
 function startBGM() {
-  if (!bgmStarted) {
-    bgm.play().catch(function() {});
-    bgmStarted = true;
+  try {
+    if (!bgm) return;
+    bgm.loop = true;
+    bgm.volume = 0.5;
+    var p = bgm.play();
+    if (p && typeof p.then === 'function') {
+      p.then(function() { bgmStarted = true; }).catch(function() {
+        // เบราว์เซอร์ยังบล็อกเสียง — รอ gesture ถัดไป
+        bgmStarted = false;
+      });
+    } else {
+      bgmStarted = true;
+    }
+  } catch (e) {
+    bgmStarted = false;
   }
+}
+
+// พยายามเล่น BGM ใหม่ถ้าถูกหยุด
+function ensureBGM() {
+  try {
+    if (!bgm) return;
+    if (bgm.paused || bgm.ended) {
+      bgmStarted = false;
+      startBGM();
+    }
+  } catch (e) {}
 }

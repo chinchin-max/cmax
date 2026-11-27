@@ -6,6 +6,7 @@ function openShopById(shopId) {
   const inv = playerData.inventory;
   menuCursor = 0;
   playSfx('shop_open');
+  if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
 
   if (shopId === 'ball_shop') {
     menuOptions = [
@@ -14,6 +15,7 @@ function openShopById(shopId) {
       { id: 'ultraball', label: 'Ultra Ball       800G  (มี ' + (inv.ultraball||0) + ')' }
     ];
     menuTitle = 'ร้านลูกบอล'; renderMenu(menuTitle, 'ลูกศรขึ้น/ลง เลือก | Enter ซื้อ | Esc กลับ', true);
+    if (typeof enterListNavigation === 'function') enterListNavigation(menuTitle);
   } else if (shopId === 'food_shop') {
     menuOptions = [
       { id: 'food_fire', label: 'อาหารธาตุไฟ      80G  (มี ' + (inv.food_fire||0) + ')' },
@@ -23,11 +25,13 @@ function openShopById(shopId) {
       { id: 'food_rock', label: 'อาหารธาตุหิน     80G  (มี ' + (inv.food_rock||0) + ')' }
     ];
     menuTitle = 'ร้านอาหารสัตว์'; renderMenu(menuTitle, 'ลูกศรขึ้น/ลง เลือก | Enter ซื้อ | Esc กลับ', true);
+    if (typeof enterListNavigation === 'function') enterListNavigation(menuTitle);
   } else if (shopId === 'evo_shop') {
     menuOptions = [
       { id: 'evo_stone', label: 'หินวิวัฒนาการ  500G  (มี ' + (inv.evo_stone||0) + ')' }
     ];
     menuTitle = 'ร้านหินวิวัฒนาการ'; renderMenu(menuTitle, 'Enter ซื้อ | Esc กลับ', true);
+    if (typeof enterListNavigation === 'function') enterListNavigation(menuTitle);
   } else if (shopId === 'info_center') {
     mode = 'explore';
     menuOptions = [];
@@ -61,6 +65,7 @@ function renderMenu(title, hint, isOpen) {
   var line = (menuCursor + 1) + ' จาก ' + menuOptions.length + '. ' + menuOptions[menuCursor].label;
   if (isOpen) speakOnly(title + '. ' + line);
   else speakOnly(line);
+  if (typeof syncA11yList === 'function') syncA11yList(title || menuTitle || 'ร้านค้า', !!isOpen);
 }
 
 function menuMove(delta) {
@@ -92,6 +97,12 @@ function menuMove(delta) {
     renderFeedSelectMenu();
   } else if (mode === 'inventory_evo_select') {
     renderEvoSelectMenu();
+  }
+  if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
+  // อัปเดตไฮไลต์ในลิสต์ แต่ไม่แย่งโฟกัส (ปุ่มทิศทางใช้ speakOnly แล้ว)
+  if (typeof syncA11yList === 'function') {
+    var ttl = menuTitle || (mode === 'inventory' ? 'กระเป๋า' : 'รายการ');
+    syncA11yList(ttl, false);
   }
 }
 
