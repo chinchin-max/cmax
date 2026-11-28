@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>ไตรภูมิ Monster Quest</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style_2.css">
 </head>
 <body>
   <div id="startScreen" class="hidden" aria-hidden="true">
@@ -32,7 +32,6 @@
       ลูกศร / WASD = เดิน · Enter = ยืนยัน · C = ค้นหามอน · I = คลัง · M = ช่วยเหลือ · / = แชท
     </div>
   </div>
-
 
   <!-- แผงปรับเสียงแบบปุ่มตรง (มือถือกดชัวร์) -->
   <div id="volumePanel" style="display:none;" role="dialog" aria-label="ตั้งค่าเสียง">
@@ -82,7 +81,6 @@
   <!-- แถบนำทางมือถือมาตรฐาน -->
   <div id="mobileControls" style="display:none;" role="navigation" aria-label="เมนูมือถือ">
     <div class="mc-inner">
-      <!-- โซนเดิน — แสดงเฉพาะหน้าสำรวจ -->
       <div id="explorePad" class="explore-pad" role="group" aria-label="ปุ่มเดิน">
         <div class="dpad-grid">
           <button type="button" class="mc-btn mc-dir dir-up" data-dir="up" aria-label="เดินขึ้น">▲</button>
@@ -97,7 +95,6 @@
         </div>
       </div>
 
-      <!-- แถบแท็บหลักด้านล่าง -->
       <nav class="bottom-tabs" role="tablist" aria-label="เมนูหลัก">
         <button type="button" class="tab-btn active" data-tab="map" data-action="tab-map" aria-label="หน้าแผนที่" role="tab" aria-selected="true">
           <span class="tab-icon" aria-hidden="true">🗺</span>
@@ -137,4 +134,3 @@
   <script src="12_main.js"></script>
 </body>
 </html>
-```[cite: 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 39, 40, 41, 42]

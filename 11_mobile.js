@@ -10,11 +10,10 @@ function isTouchDevice() {
 function showMobileControls() {
   const el = document.getElementById('mobileControls');
   if (!el) return;
-  // แสดงบนมือถือเสมอ และบนจอแคบ — เพื่อให้ TalkBack ใช้ปุ่มได้
   if (isTouchDevice() || window.innerWidth < 900) {
     el.style.display = 'block';
     el.classList.add('visible');
-    el.classList.add('force-show'); // กัน media query ซ่อนบนจอบางเครื่อง
+    el.classList.add('force-show');
     const help = document.getElementById('helpText');
     if (help) {
       help.textContent = 'ปุ่มขึ้นลงซ้ายขวา = เดิน (กดค้างได้) · ยืนยัน/กลับ/ค้นหามอน/คลัง';
@@ -22,7 +21,6 @@ function showMobileControls() {
   }
 }
 
-// ปรับป้ายปุ่มมือถือให้ตรงโหมด — TalkBack/VoiceOver อ่านแล้วรู้ว่ากดแล้วได้อะไร
 function setActiveTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(function(btn) {
     var on = btn.getAttribute('data-tab') === tab;
@@ -31,7 +29,6 @@ function setActiveTab(tab) {
   });
 }
 
-// ปรับ UI ตามโหมด — หน้าสำรวจมีปุ่มเดิน / หน้าเมนูมีลิสต์รายการ
 function updateMobileControlsForMode() {
   var inMenu = (typeof isMenuMode === 'function') ? isMenuMode() : (
     mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' ||
@@ -53,7 +50,6 @@ function updateMobileControlsForMode() {
     if (vp) {
       vp.style.display = 'none';
       vp.classList.remove('visible');
-      vp.classList.remove('is-open');
     }
   }
 
@@ -90,22 +86,19 @@ function startGame() {
   }
 }
 
-// ดึงโฟกัสกลับเกมทุกครั้งที่มี interaction (ยกเว้นพิมพ์แชท / แผงรายการ / แผงตั้งค่าเสียง)
 function lockFocusOnInteraction(e) {
   const t = e.target;
   if (t && (t.id === 'chatInput' || t.id === 'chatCloseBtn' || t.id === 'startBtn')) return;
   if (t && t.closest && t.closest('#chatPanel') && t.tagName === 'INPUT') return;
-  // อย่าแย่งโฟกัสจากปุ่มควบคุมมือถือ / ลิสต์ / แผงตั้งค่าเสียง — สำคัญสำหรับ TalkBack/VoiceOver
   if (t && t.closest && t.closest('#mobileControls')) return;
   if (t && t.closest && t.closest('#a11yListPanel')) return;
   if (t && t.closest && t.closest('#volumePanel')) return;
-  if (t && t.classList && (t.classList.contains('mc-btn') || t.classList.contains('a11y-option') || t.classList.contains('vol-btn') || t.classList.contains('vp-slider'))) return;
+  if (t && t.classList && (t.classList.contains('mc-btn') || t.classList.contains('a11y-option') || t.classList.contains('vol-btn'))) return;
   if (!gameStarted) {
     startGame();
     return;
   }
   if (typeof mode !== 'undefined' && mode === 'settings') return;
-  // บนมือถือไม่บังคับโฟกัสกลับทันที (กันปุ่มกดไม่ได้)
   if (isTouchDevice()) return;
   focusGame();
 }
@@ -122,7 +115,6 @@ function applyDirection(dr, dc) {
   if (mode === 'explore') {
     move(dr, dc);
   } else if (mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' || mode === 'battle' || mode === 'inventory' || mode === 'inventory_action' || mode === 'inventory_feed_select' || mode === 'inventory_evo_select' || mode === 'settings') {
-    // ขึ้น/ซ้าย = ก่อนหน้า, ลง/ขวา = ถัดไป (สะดวกกับ TalkBack)
     if (dr === -1 || dc === -1) menuMove(-1);
     else if (dr === 1 || dc === 1) menuMove(1);
   }
@@ -130,9 +122,8 @@ function applyDirection(dr, dc) {
 
 function startDirHold(dr, dc) {
   dirHold = { dr: dr, dc: dc };
-  applyDirection(dr, dc); // กดครั้งแรกทำทันที
+  applyDirection(dr, dc);
   if (dirInterval) clearInterval(dirInterval);
-  // ในเมนู: ไม่เลื่อนค้าง — ให้อ่านทีละรายการชัด ๆ แบบ NVDA
   var inMenu = (mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' ||
     mode === 'battle' || mode === 'inventory' || mode === 'inventory_action' ||
     mode === 'inventory_feed_select' || mode === 'inventory_evo_select' || mode === 'settings');
@@ -174,9 +165,6 @@ function rereadCurrentMenuItem() {
   }
 }
 
-// ============================================================
-// รายการเข้าถึงได้ (TalkBack / VoiceOver ปัดซ้ายขวาได้จริง)
-// ============================================================
 function isMenuMode() {
   return mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' ||
     mode === 'battle' || mode === 'inventory' || mode === 'inventory_action' ||
@@ -184,14 +172,12 @@ function isMenuMode() {
     mode === 'settings';
 }
 
-// เข้าโหมดปัดรายการ — ซ่อนการพึ่งปุ่มเดิน โฟกัสรายการแรกให้ TalkBack
 function enterListNavigation(title) {
   if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
   if (mode === 'settings') return;
   if (typeof syncA11yList === 'function') {
     syncA11yList(title || menuTitle || 'รายการ', true);
   }
-  // โฟกัสซ้ำหลายรอบ กันถูกแย่งโฟกัสตอนเปิดแผง
   var tries = 0;
   function focusFirst() {
     tries++;
@@ -243,7 +229,6 @@ function syncA11yList(titleText, preferFocus) {
   panel.removeAttribute('aria-hidden');
   if (titleEl) titleEl.textContent = titleText || menuTitle || 'รายการ';
 
-  // สร้างปุ่มรายการใหม่เฉพาะเมื่อจำนวน/เนื้อหาเปลี่ยน
   var needRebuild = list.children.length !== menuOptions.length;
   if (!needRebuild) {
     for (var i = 0; i < menuOptions.length; i++) {
@@ -274,12 +259,10 @@ function syncA11yList(titleText, preferFocus) {
         btn.disabled = true;
         btn.setAttribute('aria-disabled', 'true');
       } else {
-        // เมื่อ TalkBack ปัดมาโฟกัสรายการนี้ — อัปเดต cursor + ไฮไลต์ ไม่ยืนยันทันที
         btn.addEventListener('focus', function() {
           var idx = parseInt(this.getAttribute('data-index'), 10);
           if (isNaN(idx) || idx === menuCursor) return;
           menuCursor = idx;
-          // TalkBack อ่านป้ายปุ่มเองแล้ว — อย่า speakOnly ซ้ำ
           window._a11yQuiet = true;
           try {
             if (mode === 'inventory') renderInventoryMenu(false);
@@ -294,7 +277,6 @@ function syncA11yList(titleText, preferFocus) {
           }
         });
 
-        // ใส่ลำดับให้ TalkBack อ่านชัด
         var pos = 0, total = 0;
         for (var j = 0; j < menuOptions.length; j++) {
           if (menuOptions[j].kind !== 'separator') total++;
@@ -305,7 +287,6 @@ function syncA11yList(titleText, preferFocus) {
         btn.textContent = pos + ' จาก ' + total + '. ' + label;
         function activateOption(e) {
           if (e) { e.preventDefault(); e.stopPropagation(); }
-          // กันแตะซ้ำ touchend+click
           var now = Date.now();
           if (btn._lastAct && now - btn._lastAct < 350) return;
           btn._lastAct = now;
@@ -332,7 +313,6 @@ function syncA11yList(titleText, preferFocus) {
     });
   }
 
-  // ตั้ง selected + focus ตาม menuCursor
   var activeId = '';
   for (var i = 0; i < list.children.length; i++) {
     var el = list.children[i];
@@ -341,7 +321,6 @@ function syncA11yList(titleText, preferFocus) {
     if (selected) {
       activeId = el.id;
       if (preferFocus && !el.disabled) {
-        // โฟกัสรายการเพื่อให้ TalkBack ปัดต่อได้ทันที ไม่ต้องไปที่ปุ่มเดิน
         try { el.focus({ preventScroll: true }); } catch (e) { try { el.focus(); } catch (e2) {} }
       }
     }
@@ -433,7 +412,6 @@ function setupActionButtons() {
       } else if (action === 'i' || action === 'tab-bag') {
         if (mode === 'settings' && typeof closeVolumePanel === 'function') closeVolumePanel();
         if (mode === 'inventory' || mode === 'inventory_action' || mode === 'inventory_feed_select' || mode === 'inventory_evo_select') {
-          /* อยู่คลังแล้ว — กลับหน้าแรกของคลัง */
           showInventory();
         } else {
           if (mode !== 'explore' && mode !== 'inventory') {
@@ -462,7 +440,6 @@ function setupActionButtons() {
         setActiveTab('more');
         if (typeof openSoundSettings === 'function') openSoundSettings();
       }
-      // หลังใช้คำสั่ง: เดสก์ท็อปดึงโฟกัสกลับเกม / มือถือปล่อยไว้ที่ปุ่ม (TalkBack) และไม่ดึงตอนเปิดตั้งค่าเสียง
       if (!isTouchDevice() && mode !== 'settings') {
         setTimeout(focusGame, 30);
       }
@@ -484,6 +461,3 @@ function setupSheetBack() {
     if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
   });
 }
-```[cite: 38, 40]
-
-อยากให้ช่วยทำไฟล์เต็มของไฟล์ไหนเพิ่มเติมอีกไหมครับ?
