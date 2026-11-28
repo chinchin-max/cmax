@@ -8,13 +8,14 @@ function setupFocusOnTap() {
     focusGame();
     startBGM();
   });
-  // ถ้าโฟกัสหลุด (ยกเว้นตอนพิมพ์แชท) ให้ดึงกลับ
+  // ถ้าโฟกัสหลุด (ยกเว้นตอนพิมพ์แชท / เปิดเมนูหรือแผงเสียง) ให้ดึงกลับ
   body.addEventListener('blur', function() {
     setTimeout(function() {
+      if (typeof mode !== 'undefined' && mode === 'settings') return;
       const ae = document.activeElement;
-      if (ae && (ae.id === 'chatInput' || ae.id === 'chatCloseBtn')) return;
-      if (ae && ae.classList && (ae.classList.contains('mc-btn') || ae.classList.contains('a11y-option'))) return;
-      if (ae && ae.closest && ae.closest('#a11yListPanel')) return;
+      if (ae && (ae.id === 'chatInput' || ae.id === 'chatCloseBtn' || ae.id === 'volCloseBtn' || ae.id === 'volTestBtn')) return;
+      if (ae && ae.classList && (ae.classList.contains('mc-btn') || ae.classList.contains('a11y-option') || ae.classList.contains('vol-btn'))) return;
+      if (ae && ae.closest && (ae.closest('#a11yListPanel') || ae.closest('#volumePanel') || ae.closest('#mobileControls'))) return;
       focusGame();
     }, 0);
   });
@@ -62,10 +63,11 @@ window.onload = function() {
     } else {
       const inp = document.getElementById('chatInput');
       if (inp && document.activeElement === inp) return;
+      if (typeof mode !== 'undefined' && mode === 'settings') return;
       const ae = document.activeElement;
-      // อย่าแย่งโฟกัสจากปุ่มมือถือ / chat
-      if (ae && ae.classList && ae.classList.contains('mc-btn')) return;
-      if (ae && ae.closest && ae.closest('#mobileControls')) return;
+      // อย่าแย่งโฟกัสจากปุ่มมือถือ / แผงเสียง / แผงรายการ / chat
+      if (ae && ae.classList && (ae.classList.contains('mc-btn') || ae.classList.contains('vol-btn') || ae.classList.contains('a11y-option'))) return;
+      if (ae && ae.closest && (ae.closest('#mobileControls') || ae.closest('#volumePanel') || ae.closest('#a11yListPanel'))) return;
       // คงโฟกัสที่เกมไว้ตลอดตอนเล่น (เดสก์ท็อป)
       const body = document.getElementById('gameBody');
       if (body && document.activeElement !== body && document.activeElement !== inp) {

@@ -76,6 +76,17 @@ window.addEventListener('keydown', function(e) {
     }
   }
   else if (mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' || mode === 'battle' || mode === 'inventory' || mode === 'inventory_action' || mode === 'inventory_feed_select' || mode === 'inventory_evo_select' || mode === 'settings') {
+    if (mode === 'settings' && (key === '+' || key === '=' || code === 'NumpadAdd')) {
+      e.preventDefault();
+      if (typeof adjustSelectedSound === 'function') adjustSelectedSound(1);
+      return;
+    }
+    if (mode === 'settings' && (key === '-' || key === '_' || code === 'NumpadSubtract')) {
+      e.preventDefault();
+      if (typeof adjustSelectedSound === 'function') adjustSelectedSound(-1);
+      return;
+    }
+
     if (code === 'ArrowUp' || code === 'KeyW') {
       menuMove(-1);
       e.preventDefault();
@@ -94,7 +105,6 @@ window.addEventListener('keydown', function(e) {
     } else if (code === 'Escape') {
       handleEsc();
     } else if (code === 'KeyB') {
-      // อ่านรายการปัจจุบันซ้ำ เหมือน NVDA
       e.preventDefault();
       if (typeof rereadCurrentMenuItem === 'function') rereadCurrentMenuItem();
     }
@@ -123,19 +133,8 @@ function handleConfirm() {
     if (menuOptions[menuCursor]) selectArenaPet(menuOptions[menuCursor].id);
   } else if (mode === 'battle') {
     if (menuOptions[menuCursor]) doSkill(menuOptions[menuCursor].id);
-    // ถ้าศัตรูตาย/จบแล้ว mode จะไม่ใช่ battle — ห้ามเปิดแผงสกิลซ้ำ
-    if (mode === 'battle' && battleState) {
-      buildBattleOptions();
-      renderBattleMenu();
-      if (typeof syncA11yList === 'function') syncA11yList('การต่อสู้', false);
-    } else {
-      if (typeof endBattleToExplore === 'function') {
-        // ซ้ำได้ ปลอดภัย — กันแผงค้าง
-        endBattleToExplore();
-      } else {
-        if (typeof hideA11yList === 'function') hideA11yList();
-        if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
-      }
+    if (mode !== 'battle' && typeof endBattleToExplore === 'function') {
+      endBattleToExplore();
     }
   } else if (mode === 'inventory') {
     openInvActionMenu();
@@ -156,7 +155,7 @@ function handleConfirm() {
       showInventory();
     }
   } else if (mode === 'settings') {
-    /* ใช้ปุ่ม +/− ในแผงเสียง */
+    if (typeof adjustSelectedSound === 'function') adjustSelectedSound(1);
   } else if (mode === 'explore') {
     tryInteract();
   }
@@ -180,6 +179,7 @@ function handleEsc() {
   } else if (mode === 'battle') {
     doSkill('flee');
   } else if (mode !== 'explore') {
+    if (typeof lastShopNotice !== 'undefined') lastShopNotice = '';
     mode = 'explore';
     menuOptions = [];
     if (typeof hideA11yList === 'function') hideA11yList();
@@ -188,4 +188,3 @@ function handleEsc() {
   if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
 }
 
-// ============================================================

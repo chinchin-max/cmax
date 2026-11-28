@@ -5,7 +5,7 @@ function showBattleUI(extraMsg) {
   if (!battleState) return;
   buildBattleOptions();
   menuCursor = 0;
-  renderBattleMenu(extraMsg);
+  renderBattleMenu(extraMsg, extraMsg);
   if (typeof enterListNavigation === 'function') enterListNavigation('การต่อสู้');
   else if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
 }
@@ -25,11 +25,12 @@ function buildBattleOptions() {
   menuOptions.push({ id: 'flee', label: 'หนี' });
 }
 
-function renderBattleMenu(extraMsg) {
+function renderBattleMenu(extraMsg, customSpeak) {
   if (!battleState) return;
   const myPet = battleState.myPet;
   const enemy = battleState.enemy;
-  let t = (extraMsg ? extraMsg + '\n\n' : '') + '=== การต่อสู้ ===\n\n';
+  let t = '=== การต่อสู้ ===\n\n';
+  if (extraMsg) t += extraMsg + '\n\n';
   if (myPet) {
     t += 'คุณ: ' + myPet.name + ' Lv.' + myPet.level + ' (' + myPet.element + ')\n';
     t += 'HP ' + myPet.hp + '/' + myPet.maxHp + ' | ATK ' + myPet.atk + '\n\n';
@@ -45,12 +46,11 @@ function renderBattleMenu(extraMsg) {
   });
   announce(t, false);
   if (menuOptions[menuCursor]) {
-    speakOnly((menuCursor + 1) + ' จาก ' + menuOptions.length + '. ' + menuOptions[menuCursor].label);
+    var optLine = (menuCursor + 1) + ' จาก ' + menuOptions.length + '. ' + menuOptions[menuCursor].label;
+    speakOnly(customSpeak ? (customSpeak + '. ' + optLine) : optLine);
   }
   if (typeof syncA11yList === 'function') syncA11yList('การต่อสู้', false);
 }
-
-
 
 // ปิดหน้าเลือกสกิล/เมนูต่อสู้ กลับหน้าสำรวจ (มือถือจะซ่อนแผงรายการ)
 function endBattleToExplore() {
@@ -59,7 +59,8 @@ function endBattleToExplore() {
   menuOptions = [];
   menuCursor = 0;
   menuTitle = '';
-  // บังคับปิดแผงเลือกสกิลบนมือถือทันทีเมื่อศัตรูตาย/จบไฟท์
+  selectedPetIndex = -1;
+
   var panel = document.getElementById('a11yListPanel');
   if (panel) {
     panel.style.display = 'none';
@@ -74,6 +75,14 @@ function endBattleToExplore() {
   if (typeof setActiveTab === 'function') setActiveTab('map');
 }
 
+function finishBattleWithMessage(msg, speakLine) {
+  endBattleToExplore();
+  announce(msg, false);
+  if (typeof speakOnly === 'function') {
+    speakOnly(speakLine || msg);
+  }
+}
+
 function doSkill(skill) {
   if (mode !== 'battle' || !battleState) return;
   const myPet = battleState.myPet;
@@ -84,7 +93,7 @@ function doSkill(skill) {
 
   if (skill === 'normal' || skill === 'heavy' || skill === 'element') {
     if (!myPet) {
-      announce("คุณยังไม่มีสัตว์เลี้ยง ให้ใช้การโยนบอลแทน");
+      renderBattleMenu("คุณยังไม่มีสัตว์เลี้ยง ให้ใช้การโยนบอลแทน", "คุณยังไม่มีสัตว์เลี้ยง ให้ใช้การโยนบอลแทน");
       return;
     }
 
@@ -109,9 +118,8 @@ function doSkill(skill) {
       log += "โจมตีพลาด!\n";
     } else {
       playSfx('hit');
-      enemy.hp -= dmg;
-      log += "สร้างความเสียหาย " + dmg + " แต้ม!\n";
-      log += "HP ศัตรูเหลือ " + Math.max(0, enemy.hp) + "\n";
+      enemy.hp = Math.max(0, enemy.hp - dmg);
+      log += "สร้างความเสียหาย " + dmg + " แต้ม! HP ศัตรูเหลือ " + enemy.hp + "\n";
     }
 
     if (enemy.hp <= 0) {
@@ -121,30 +129,35 @@ function doSkill(skill) {
       saveGame();
       updateStatusBar();
       playSfx('win');
-      announce(
-        "ชนะแล้ว!\nได้รับ " + reward + " G\n" +
+      const winMsg =
+        log + "\nชนะแล้ว! ได้รับ " + reward + " G\n" +
         (isWild ? "(มอนป่าถูกเอาชนะ)\n" : "ชัยชนะลานประลอง: " + playerData.arenaWins + "\n") +
-        "\nกด C หรือ R เพื่อหาต่อสู้ต่อ"
-      );
-      endBattleToExplore();
+        "\nกด C หรือ R เพื่อหาต่อสู้ต่อ";
+      finishBattleWithMessage(winMsg, "ชนะแล้ว ได้รับ " + reward + " เหรียญ");
       return;
     }
 
-    log += enemyCounterAttack();
+    const counterRes = enemyCounterAttack();
+    log += counterRes.text;
     if (battleState && battleState.myPet && battleState.myPet.hp <= 0) {
       playSfx('lose');
-      announce(log + "\nสัตว์เลี้ยงของคุณหมดแรง!\nคุณแพ้การต่อสู้ครั้งนี้");
-      endBattleToExplore();
+      finishBattleWithMessage(
+        log + "\nสัตว์เลี้ยงของคุณหมดแรง! คุณแพ้การต่อสู้ครั้งนี้",
+        "สัตว์เลี้ยงของคุณหมดแรง คุณแพ้การต่อสู้"
+      );
       return;
     }
-    announce(log + "\n" + getSkillPrompt());
+
+    buildBattleOptions();
+    menuCursor = 0;
+    renderBattleMenu(log.trim(), log.replace(/\n+/g, '. '));
     return;
   }
 
   if (skill === 'pokeball' || skill === 'greatball' || skill === 'ultraball') {
     if (!canCatch || !isWild) {
       playSfx('error');
-      announce("ตอนนี้โยนบอลไม่ได้");
+      renderBattleMenu("ตอนนี้โยนบอลไม่ได้", "ตอนนี้โยนบอลไม่ได้");
       return;
     }
     throwBallInBattle(skill);
@@ -153,23 +166,25 @@ function doSkill(skill) {
 
   if (skill === 'flee') {
     playSfx('flee');
-    announce("คุณหนีออกมาอย่างปลอดภัย");
-    endBattleToExplore();
+    finishBattleWithMessage("คุณหนีออกมาอย่างปลอดภัย", "หนีออกมาอย่างปลอดภัย");
   }
 }
 
 function enemyCounterAttack() {
-  if (!battleState || !battleState.myPet) return "";
+  if (!battleState || !battleState.myPet) return { text: "", speakHint: "" };
   const myPet = battleState.myPet;
   const enemy = battleState.enemy;
   let dmg = enemy.atk;
   if (ELEMENT_WEAKNESS[myPet.element] === enemy.element) {
     dmg = Math.floor(dmg * 1.4);
   }
-  dmg = Math.floor(dmg * (0.8 + Math.random() * 0.4));
-  myPet.hp -= dmg;
+  dmg = Math.max(1, Math.floor(dmg * (0.8 + Math.random() * 0.4)));
+  myPet.hp = Math.max(0, myPet.hp - dmg);
   playSfx('hit');
-  return "\n" + enemy.name + " โจมตีกลับ! ความเสียหาย " + dmg + "\nHP ของคุณเหลือ " + Math.max(0, myPet.hp) + "\n";
+  return {
+    text: enemy.name + " โจมตีกลับ! เสียหาย " + dmg + " (HP คุณเหลือ " + myPet.hp + "/" + myPet.maxHp + ")\n",
+    speakHint: enemy.name + " โจมตีกลับ เสียหาย " + dmg + " เลือดเหลือ " + myPet.hp
+  };
 }
 
 function getSkillPrompt() {
@@ -183,7 +198,8 @@ function throwBallInBattle(type) {
   const inv = playerData.inventory;
   if ((inv[type] || 0) <= 0) {
     playSfx('error');
-    announce("ไม่มี " + (SHOP_ITEMS[type] ? SHOP_ITEMS[type].name : type) + " เหลือแล้ว");
+    const noBallMsg = "ไม่มี " + (SHOP_ITEMS[type] ? SHOP_ITEMS[type].name : type) + " เหลือแล้ว";
+    renderBattleMenu(noBallMsg, noBallMsg);
     return;
   }
   inv[type]--;
@@ -213,26 +229,43 @@ function throwBallInBattle(type) {
     });
     saveGame();
     playSfx('catch_ok');
-    announce("จับสำเร็จ!\n" + enemy.name + " Lv." + enemy.level + " เข้าคลังแล้ว\n(จากโซน: " + enemy.zoneName + ")");
-    endBattleToExplore();
-  } else {
-    playSfx('catch_fail');
-    let log = "โยนบอลพลาด! " + enemy.name + " ดิ้นหลุด\n";
-    if (Math.random() < 0.28) {
-      playSfx('flee');
-      announce(log + enemy.name + " วิ่งหนีไปแล้ว");
-      endBattleToExplore();
+    finishBattleWithMessage(
+      "จับสำเร็จ! " + enemy.name + " Lv." + enemy.level + " เข้าคลังแล้ว\n(จากโซน: " + enemy.zoneName + ")",
+      "จับสำเร็จ " + enemy.name + " เลเวล " + enemy.level + " เข้าคลังแล้ว"
+    );
+    return;
+  }
+
+  playSfx('catch_fail');
+  let log = "โยนบอลพลาด! " + enemy.name + " ดิ้นหลุด\n";
+
+  if (Math.random() < 0.28) {
+    playSfx('flee');
+    finishBattleWithMessage(
+      log + enemy.name + " วิ่งหนีไปแล้ว",
+      "โยนบอลพลาด " + enemy.name + " วิ่งหนีไปแล้ว"
+    );
+    return;
+  }
+
+  if (battleState && battleState.myPet) {
+    const counterRes = enemyCounterAttack();
+    log += counterRes.text;
+    if (battleState.myPet.hp <= 0) {
+      playSfx('lose');
+      finishBattleWithMessage(
+        log + "\nสัตว์เลี้ยงหมดแรง! คุณแพ้",
+        "สัตว์เลี้ยงหมดแรง คุณแพ้"
+      );
       return;
     }
-    if (battleState.myPet) {
-      log += enemyCounterAttack();
-      if (battleState.myPet.hp <= 0) {
-        playSfx('lose');
-        announce(log + "\nสัตว์เลี้ยงหมดแรง! คุณแพ้");
-        endBattleToExplore();
-        return;
-      }
-    }
-    announce(log + "\n" + getSkillPrompt());
+    buildBattleOptions();
+    menuCursor = 0;
+    renderBattleMenu(log.trim(), "โยนบอลพลาด " + enemy.name + " ดิ้นหลุด. " + counterRes.speakHint);
+    return;
   }
+
+  buildBattleOptions();
+  menuCursor = 0;
+  renderBattleMenu(log.trim(), "โยนบอลพลาด " + enemy.name + " ดิ้นหลุด");
 }

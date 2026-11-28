@@ -10,11 +10,10 @@ function isTouchDevice() {
 function showMobileControls() {
   const el = document.getElementById('mobileControls');
   if (!el) return;
-  // แสดงบนมือถือเสมอ และบนจอแคบ — เพื่อให้ TalkBack ใช้ปุ่มได้
   if (isTouchDevice() || window.innerWidth < 900) {
     el.style.display = 'block';
     el.classList.add('visible');
-    el.classList.add('force-show'); // กัน media query ซ่อนบนจอบางเครื่อง
+    el.classList.add('force-show');
     const help = document.getElementById('helpText');
     if (help) {
       help.textContent = 'ปุ่มขึ้นลงซ้ายขวา = เดิน (กดค้างได้) · ยืนยัน/กลับ/ค้นหามอน/คลัง';
@@ -22,8 +21,6 @@ function showMobileControls() {
   }
 }
 
-
-// ปรับป้ายปุ่มมือถือให้ตรงโหมด — TalkBack/VoiceOver อ่านแล้วรู้ว่ากดแล้วได้อะไร
 function setActiveTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(function(btn) {
     var on = btn.getAttribute('data-tab') === tab;
@@ -32,12 +29,12 @@ function setActiveTab(tab) {
   });
 }
 
-// ปรับ UI ตามโหมด — หน้าสำรวจมีปุ่มเดิน / หน้าเมนูมีลิสต์รายการ
 function updateMobileControlsForMode() {
   var inMenu = (typeof isMenuMode === 'function') ? isMenuMode() : (
     mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' ||
     mode === 'battle' || mode === 'inventory' || mode === 'inventory_action' ||
-    mode === 'inventory_feed_select' || mode === 'inventory_evo_select'
+    mode === 'inventory_feed_select' || mode === 'inventory_evo_select' ||
+    mode === 'settings'
   );
 
   if (inMenu) {
@@ -50,7 +47,7 @@ function updateMobileControlsForMode() {
     setActiveTab('map');
     if (typeof hideA11yList === 'function') hideA11yList();
     var vp = document.getElementById('volumePanel');
-    if (vp && mode !== 'settings') {
+    if (vp) {
       vp.style.display = 'none';
       vp.classList.remove('visible');
     }
@@ -89,20 +86,19 @@ function startGame() {
   }
 }
 
-// ดึงโฟกัสกลับเกมทุกครั้งที่มี interaction (ยกเว้นพิมพ์แชท)
 function lockFocusOnInteraction(e) {
   const t = e.target;
   if (t && (t.id === 'chatInput' || t.id === 'chatCloseBtn' || t.id === 'startBtn')) return;
   if (t && t.closest && t.closest('#chatPanel') && t.tagName === 'INPUT') return;
-  // อย่าแย่งโฟกัสจากปุ่มควบคุมมือถือ — สำคัญสำหรับ TalkBack/VoiceOver
   if (t && t.closest && t.closest('#mobileControls')) return;
   if (t && t.closest && t.closest('#a11yListPanel')) return;
-  if (t && t.classList && (t.classList.contains('mc-btn') || t.classList.contains('a11y-option'))) return;
+  if (t && t.closest && t.closest('#volumePanel')) return;
+  if (t && t.classList && (t.classList.contains('mc-btn') || t.classList.contains('a11y-option') || t.classList.contains('vol-btn'))) return;
   if (!gameStarted) {
     startGame();
     return;
   }
-  // บนมือถือไม่บังคับโฟกัสกลับทันที (กันปุ่มกดไม่ได้)
+  if (typeof mode !== 'undefined' && mode === 'settings') return;
   if (isTouchDevice()) return;
   focusGame();
 }
@@ -119,7 +115,6 @@ function applyDirection(dr, dc) {
   if (mode === 'explore') {
     move(dr, dc);
   } else if (mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' || mode === 'battle' || mode === 'inventory' || mode === 'inventory_action' || mode === 'inventory_feed_select' || mode === 'inventory_evo_select' || mode === 'settings') {
-    // ขึ้น/ซ้าย = ก่อนหน้า, ลง/ขวา = ถัดไป (สะดวกกับ TalkBack)
     if (dr === -1 || dc === -1) menuMove(-1);
     else if (dr === 1 || dc === 1) menuMove(1);
   }
@@ -127,9 +122,8 @@ function applyDirection(dr, dc) {
 
 function startDirHold(dr, dc) {
   dirHold = { dr: dr, dc: dc };
-  applyDirection(dr, dc); // กดครั้งแรกทำทันที
+  applyDirection(dr, dc);
   if (dirInterval) clearInterval(dirInterval);
-  // ในเมนู: ไม่เลื่อนค้าง — ให้อ่านทีละรายการชัด ๆ แบบ NVDA
   var inMenu = (mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' ||
     mode === 'battle' || mode === 'inventory' || mode === 'inventory_action' ||
     mode === 'inventory_feed_select' || mode === 'inventory_evo_select' || mode === 'settings');
@@ -147,8 +141,6 @@ function stopDirHold() {
     dirInterval = null;
   }
 }
-
-// ปุ่มทิศทาง 4 ทิศ — กดครั้งเดียวหรือกดค้าง (รองรับ TalkBack)
 
 function rereadCurrentMenuItem() {
   if (!menuOptions || !menuOptions.length) {
@@ -173,10 +165,6 @@ function rereadCurrentMenuItem() {
   }
 }
 
-
-// ============================================================
-// รายการเข้าถึงได้ (TalkBack / VoiceOver ปัดซ้ายขวาได้จริง)
-// ============================================================
 function isMenuMode() {
   return mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' ||
     mode === 'battle' || mode === 'inventory' || mode === 'inventory_action' ||
@@ -184,14 +172,12 @@ function isMenuMode() {
     mode === 'settings';
 }
 
-
-// เข้าโหมดปัดรายการ — ซ่อนการพึ่งปุ่มเดิน โฟกัสรายการแรกให้ TalkBack
 function enterListNavigation(title) {
   if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
+  if (mode === 'settings') return;
   if (typeof syncA11yList === 'function') {
     syncA11yList(title || menuTitle || 'รายการ', true);
   }
-  // โฟกัสซ้ำหลายรอบ กันถูกแย่งโฟกัสตอนเปิดแผง
   var tries = 0;
   function focusFirst() {
     tries++;
@@ -224,6 +210,10 @@ function hideA11yList() {
 }
 
 function syncA11yList(titleText, preferFocus) {
+  if (mode === 'settings') {
+    hideA11yList();
+    return;
+  }
   var panel = document.getElementById('a11yListPanel');
   var list = document.getElementById('a11yList');
   var titleEl = document.getElementById('a11yListTitle');
@@ -239,7 +229,6 @@ function syncA11yList(titleText, preferFocus) {
   panel.removeAttribute('aria-hidden');
   if (titleEl) titleEl.textContent = titleText || menuTitle || 'รายการ';
 
-  // สร้างปุ่มรายการใหม่เฉพาะเมื่อจำนวน/เนื้อหาเปลี่ยน
   var needRebuild = list.children.length !== menuOptions.length;
   if (!needRebuild) {
     for (var i = 0; i < menuOptions.length; i++) {
@@ -270,12 +259,10 @@ function syncA11yList(titleText, preferFocus) {
         btn.disabled = true;
         btn.setAttribute('aria-disabled', 'true');
       } else {
-        // เมื่อ TalkBack ปัดมาโฟกัสรายการนี้ — อัปเดต cursor + ไฮไลต์ ไม่ยืนยันทันที
         btn.addEventListener('focus', function() {
           var idx = parseInt(this.getAttribute('data-index'), 10);
           if (isNaN(idx) || idx === menuCursor) return;
           menuCursor = idx;
-          // TalkBack อ่านป้ายปุ่มเองแล้ว — อย่า speakOnly ซ้ำ
           window._a11yQuiet = true;
           try {
             if (mode === 'inventory') renderInventoryMenu(false);
@@ -285,13 +272,11 @@ function syncA11yList(titleText, preferFocus) {
             else if (mode === 'inventory_action') renderInvActionMenu(false);
             else if (mode === 'inventory_feed_select') renderFeedSelectMenu(false);
             else if (mode === 'inventory_evo_select') renderEvoSelectMenu(false);
-            else if (mode === 'settings') renderSoundSettings(false);
           } finally {
             window._a11yQuiet = false;
           }
         });
 
-        // ใส่ลำดับให้ TalkBack อ่านชัด
         var pos = 0, total = 0;
         for (var j = 0; j < menuOptions.length; j++) {
           if (menuOptions[j].kind !== 'separator') total++;
@@ -302,20 +287,12 @@ function syncA11yList(titleText, preferFocus) {
         btn.textContent = pos + ' จาก ' + total + '. ' + label;
         function activateOption(e) {
           if (e) { e.preventDefault(); e.stopPropagation(); }
-          // กันแตะซ้ำ touchend+click
           var now = Date.now();
           if (btn._lastAct && now - btn._lastAct < 350) return;
           btn._lastAct = now;
           var idx = parseInt(btn.getAttribute('data-index'), 10);
           if (isNaN(idx)) return;
           menuCursor = idx;
-          if (mode === 'settings') {
-            // ทางลัด: ปรับเสียงตรง ๆ ไม่ผ่าน handleConfirm ซ้อน
-            if (typeof handleSoundSetting === 'function') {
-              handleSoundSetting(menuOptions[idx].id);
-            }
-            return;
-          }
           if (mode === 'inventory') renderInventoryMenu(false);
           else if (mode === 'shop') renderMenu(menuTitle || 'ร้านค้า', null, false);
           else if (mode === 'catch_select' || mode === 'arena_select') renderPetSelectMenu(menuTitle);
@@ -336,7 +313,6 @@ function syncA11yList(titleText, preferFocus) {
     });
   }
 
-  // ตั้ง selected + focus ตาม menuCursor
   var activeId = '';
   for (var i = 0; i < list.children.length; i++) {
     var el = list.children[i];
@@ -345,7 +321,6 @@ function syncA11yList(titleText, preferFocus) {
     if (selected) {
       activeId = el.id;
       if (preferFocus && !el.disabled) {
-        // โฟกัสรายการเพื่อให้ TalkBack ปัดต่อได้ทันที ไม่ต้องไปที่ปุ่มเดิน
         try { el.focus({ preventScroll: true }); } catch (e) { try { el.focus(); } catch (e2) {} }
       }
     }
@@ -368,7 +343,6 @@ function setupJoystick() {
     let usedTouch = false;
 
     function onDown(e) {
-      // ไม่ preventDefault ทุกกรณี — ให้ TalkBack เปิดใช้งานปุ่มได้
       if (e.type === 'touchstart') {
         usedTouch = true;
         e.preventDefault();
@@ -379,18 +353,16 @@ function setupJoystick() {
       btn.classList.add('pressed');
       startDirHold(dir.dr, dir.dc);
     }
-    function onUp(e) {
+    function onUp() {
       btn.classList.remove('pressed');
       stopDirHold();
     }
     function onClick(e) {
       e.preventDefault();
-      // ถ้าเพิ่งใช้ touch ไปแล้ว อย่าเดินซ้ำจาก click
       if (usedTouch) {
         usedTouch = false;
         return;
       }
-      // TalkBack / เมาส์: เดินทีละก้าว
       startBGM();
       applyDirection(dir.dr, dir.dc);
     }
@@ -414,7 +386,6 @@ function setupActionButtons() {
         e.preventDefault();
         e.stopPropagation();
       }
-      // กันกดซ้ำจาก touchend + click
       const now = Date.now();
       if (now - lastFire < 120) return;
       lastFire = now;
@@ -430,6 +401,7 @@ function setupActionButtons() {
         handleEsc();
       } else if (action === 'c' || action === 'tab-search') {
         if (mode !== 'explore') {
+          if (mode === 'settings' && typeof closeVolumePanel === 'function') closeVolumePanel();
           mode = 'explore';
           menuOptions = [];
           if (typeof hideA11yList === 'function') hideA11yList();
@@ -438,8 +410,8 @@ function setupActionButtons() {
         startSearch();
         setActiveTab('search');
       } else if (action === 'i' || action === 'tab-bag') {
+        if (mode === 'settings' && typeof closeVolumePanel === 'function') closeVolumePanel();
         if (mode === 'inventory' || mode === 'inventory_action' || mode === 'inventory_feed_select' || mode === 'inventory_evo_select') {
-          /* อยู่คลังแล้ว — กลับหน้าแรกของคลัง */
           showInventory();
         } else {
           if (mode !== 'explore' && mode !== 'inventory') {
@@ -466,10 +438,9 @@ function setupActionButtons() {
         if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
       } else if (action === 'm' || action === 'tab-more') {
         setActiveTab('more');
-        openSoundSettings();
+        if (typeof openSoundSettings === 'function') openSoundSettings();
       }
-      // หลังใช้คำสั่ง: เดสก์ท็อปดึงโฟกัสกลับเกม / มือถือปล่อยไว้ที่ปุ่ม (TalkBack)
-      if (!isTouchDevice()) {
+      if (!isTouchDevice() && mode !== 'settings') {
         setTimeout(focusGame, 30);
       }
     }
@@ -481,7 +452,6 @@ function setupActionButtons() {
   });
 }
 
-
 function setupSheetBack() {
   var btn = document.getElementById('sheetBackBtn');
   if (!btn) return;
@@ -489,138 +459,5 @@ function setupSheetBack() {
     e.preventDefault();
     if (typeof handleEsc === 'function') handleEsc();
     if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
-  });
-}
-
-
-
-
-// ===== แผงตั้งค่าเสียง (ปุ่ม + / − มือถือกดได้ชัวร์) =====
-function stepVolume(v, dir) {
-  var steps = VOLUME_STEPS;
-  var idx = 0, best = 99;
-  for (var i = 0; i < steps.length; i++) {
-    var d = Math.abs(steps[i] - v);
-    if (d < best) { best = d; idx = i; }
-  }
-  idx = idx + (dir < 0 ? -1 : 1);
-  if (idx < 0) idx = 0;
-  if (idx >= steps.length) idx = steps.length - 1;
-  return steps[idx];
-}
-
-function refreshVolumePanelUI() {
-  function pct(v) { return Math.round(v * 100) + '%'; }
-  var bgmEl = document.getElementById('volBgmVal');
-  var sfxEl = document.getElementById('volSfxVal');
-  var ambEl = document.getElementById('volAmbVal');
-  if (bgmEl) {
-    bgmEl.textContent = pct(audioSettings.bgm);
-    bgmEl.setAttribute('aria-label', 'เพลงพื้นหลัง ' + volumeLabel(audioSettings.bgm) + ' แตะเพื่อเพิ่ม');
-  }
-  if (sfxEl) {
-    sfxEl.textContent = pct(audioSettings.sfx);
-    sfxEl.setAttribute('aria-label', 'เอฟเฟกต์ ' + volumeLabel(audioSettings.sfx) + ' แตะเพื่อเพิ่ม');
-  }
-  if (ambEl) {
-    ambEl.textContent = pct(audioSettings.ambient);
-    ambEl.setAttribute('aria-label', 'บรรยากาศ ' + volumeLabel(audioSettings.ambient) + ' แตะเพื่อเพิ่ม');
-  }
-}
-
-function openSoundSettings() {
-  mode = 'settings';
-  menuOptions = [];
-  if (typeof hideA11yList === 'function') hideA11yList();
-  if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
-  var panel = document.getElementById('volumePanel');
-  if (panel) {
-    panel.style.display = 'block';
-    panel.classList.add('visible');
-    panel.removeAttribute('aria-hidden');
-  }
-  refreshVolumePanelUI();
-  speakOnly('ตั้งค่าเสียง. ใช้ปุ่มลดหรือเพิ่มเพื่อปรับระดับ');
-  var first = document.querySelector('#volumePanel .vol-btn');
-  if (first) {
-    try { first.focus(); } catch (e) {}
-  }
-}
-
-function closeVolumePanel() {
-  var panel = document.getElementById('volumePanel');
-  if (panel) {
-    panel.style.display = 'none';
-    panel.classList.remove('visible');
-    panel.setAttribute('aria-hidden', 'true');
-  }
-  if (mode === 'settings') {
-    mode = 'explore';
-    menuOptions = [];
-  }
-  if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
-  if (typeof setActiveTab === 'function') setActiveTab('map');
-}
-
-function adjustVolume(kind, dir) {
-  if (!audioSettings) return;
-  if (kind === 'bgm') audioSettings.bgm = stepVolume(audioSettings.bgm, dir);
-  else if (kind === 'sfx') audioSettings.sfx = stepVolume(audioSettings.sfx, dir);
-  else if (kind === 'ambient') audioSettings.ambient = stepVolume(audioSettings.ambient, dir);
-  else return;
-  applyAudioSettings();
-  saveAudioSettings();
-  refreshVolumePanelUI();
-  if (kind === 'bgm' && typeof startBGM === 'function') startBGM();
-  if (kind === 'sfx') playSfx('confirm');
-  else playSfx('menu');
-  var label = kind === 'bgm' ? 'เพลงพื้นหลัง' : kind === 'sfx' ? 'เอฟเฟกต์' : 'บรรยากาศ';
-  var val = kind === 'bgm' ? audioSettings.bgm : kind === 'sfx' ? audioSettings.sfx : audioSettings.ambient;
-  speakOnly(label + '. ' + volumeLabel(val));
-  // อัปเดตจอข้อความ
-  var disp = document.getElementById('display');
-  if (disp) {
-    disp.innerText =
-      '=== ตั้งค่าเสียง ===\n\n' +
-      'เพลงพื้นหลัง: ' + volumeLabel(audioSettings.bgm) + '\n' +
-      'เสียงเอฟเฟกต์: ' + volumeLabel(audioSettings.sfx) + '\n' +
-      'เสียงบรรยากาศ: ' + volumeLabel(audioSettings.ambient) + '\n\n' +
-      'กด + / − เพื่อปรับ · ปิด เพื่อออก';
-  }
-}
-
-function setupVolumePanel() {
-  var panel = document.getElementById('volumePanel');
-  if (!panel || panel._ready) return;
-  panel._ready = true;
-  function bind(el, fn) {
-    if (!el) return;
-    var last = 0;
-    function fire(e) {
-      if (e) { e.preventDefault(); e.stopPropagation(); }
-      var now = Date.now();
-      if (now - last < 200) return;
-      last = now;
-      startBGM();
-      fn(e);
-    }
-    el.addEventListener('click', fire);
-    el.addEventListener('touchend', fire, { passive: false });
-  }
-  panel.querySelectorAll('.vol-btn[data-vol]').forEach(function(btn) {
-    bind(btn, function() {
-      var kind = btn.getAttribute('data-vol');
-      var dir = parseInt(btn.getAttribute('data-dir'), 10) || 1;
-      adjustVolume(kind, dir);
-    });
-  });
-  bind(document.getElementById('volTestBtn'), function() {
-    playSfx('hit');
-    setTimeout(function() { playSfx('win'); }, 180);
-    speakOnly('ทดลองเสียง');
-  });
-  bind(document.getElementById('volCloseBtn'), function() {
-    closeVolumePanel();
-    announce('ปิดตั้งค่าเสียง');
   });
 }
