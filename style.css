@@ -82,7 +82,9 @@ body.mode-menu {
   left: 0;
   right: 0;
   bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-  z-index: 4990;
+  z-index: 6000;
+  pointer-events: auto;
+
   width: 100%;
   max-width: none;
   margin: 0;

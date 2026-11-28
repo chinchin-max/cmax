@@ -108,7 +108,13 @@ function nextVolume(v) {
 
 function applyAudioSettings() {
   try {
-    if (bgm) bgm.volume = audioSettings.bgm;
+    if (bgm) {
+      bgm.volume = Math.max(0, Math.min(1, audioSettings.bgm));
+      // ถ้าเพลงกำลังเล่นอยู่ ให้ดังตามค่าใหม่ทันที
+      if (!bgm.paused && audioSettings.bgm > 0 && bgm.volume === 0) {
+        /* noop */
+      }
+    }
   } catch (e) {}
   Object.keys(sounds).forEach(function(k) {
     var item = sounds[k];

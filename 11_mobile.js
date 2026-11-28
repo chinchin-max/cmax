@@ -295,13 +295,22 @@ function syncA11yList(titleText, preferFocus) {
           if (menuOptions[j].kind !== 'separator') pos++;
         }
         btn.textContent = pos + ' จาก ' + total + '. ' + label;
-        btn.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          var idx = parseInt(this.getAttribute('data-index'), 10);
+        function activateOption(e) {
+          if (e) { e.preventDefault(); e.stopPropagation(); }
+          // กันแตะซ้ำ touchend+click
+          var now = Date.now();
+          if (btn._lastAct && now - btn._lastAct < 350) return;
+          btn._lastAct = now;
+          var idx = parseInt(btn.getAttribute('data-index'), 10);
           if (isNaN(idx)) return;
           menuCursor = idx;
-          // อัปเดตไฮไลต์บนจอเกม
+          if (mode === 'settings') {
+            // ทางลัด: ปรับเสียงตรง ๆ ไม่ผ่าน handleConfirm ซ้อน
+            if (typeof handleSoundSetting === 'function') {
+              handleSoundSetting(menuOptions[idx].id);
+            }
+            return;
+          }
           if (mode === 'inventory') renderInventoryMenu(false);
           else if (mode === 'shop') renderMenu(menuTitle || 'ร้านค้า', null, false);
           else if (mode === 'catch_select' || mode === 'arena_select') renderPetSelectMenu(menuTitle);
@@ -309,15 +318,14 @@ function syncA11yList(titleText, preferFocus) {
           else if (mode === 'inventory_action') renderInvActionMenu(false);
           else if (mode === 'inventory_feed_select') renderFeedSelectMenu(false);
           else if (mode === 'inventory_evo_select') renderEvoSelectMenu(false);
-          else if (mode === 'settings') renderSoundSettings(false);
-          // ยืนยันเลือกรายการนี้
           if (typeof handleConfirm === 'function') handleConfirm();
-          // ปิดแผงเฉพาะเมื่อกลับหน้าสำรวจแล้วเท่านั้น (อย่าใช้ !battleState — ตั้งค่าเสียงจะถูกปิดผิด)
           if (mode === 'explore') {
             if (typeof hideA11yList === 'function') hideA11yList();
             if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
           }
-        });
+        }
+        btn.addEventListener('click', activateOption);
+        btn.addEventListener('touchend', activateOption, { passive: false });
       }
       list.appendChild(btn);
     });
@@ -485,9 +493,23 @@ function openSoundSettings() {
   menuCursor = 0;
   menuTitle = 'ตั้งค่าเสียง';
   buildSoundSettingsOptions();
+  if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
   renderSoundSettings(true);
+  // บังคับโชว์แผง + สร้างปุ่มใหม่เสมอ
+  var panel = document.getElementById('a11yListPanel');
+  var list = document.getElementById('a11yList');
+  if (list) list.innerHTML = '';
+  if (typeof syncA11yList === 'function') syncA11yList('ตั้งค่าเสียง', true);
+  if (panel) {
+    panel.style.display = 'block';
+    panel.style.visibility = 'visible';
+    panel.style.pointerEvents = 'auto';
+    panel.style.zIndex = '6000';
+    panel.classList.add('visible');
+    panel.removeAttribute('aria-hidden');
+  }
   if (typeof enterListNavigation === 'function') enterListNavigation('ตั้งค่าเสียง');
-  else if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
+  speakOnly('ตั้งค่าเสียง. แตะรายการเพื่อปรับระดับเสียง');
 }
 
 function buildSoundSettingsOptions() {
