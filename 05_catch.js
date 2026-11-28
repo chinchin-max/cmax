@@ -41,9 +41,20 @@ function startSearch(fromRandom) {
   menuTitle = (fromRandom ? '!! สัตว์ป่าโผล่มา !!' : 'พบสัตว์ป่า') + '\n' + name + ' Lv.' + level + ' (' + element + ')!\nATK ' + atk + ' | HP ' + hp;
   menuCursor = 0;
   menuOptions = petInventory.map(function(p, i) {
-    return { id: i, label: p.name + ' Lv.' + p.level + ' (' + p.element + ') ATK' + p.atk + ' HP' + p.hp + '/' + (p.maxHp||p.hp) };
+    return {
+      id: i,
+      label: p.name + ' Lv.' + p.level + ' (' + p.element + ') ATK' + p.atk + ' HP' + p.hp + '/' + (p.maxHp||p.hp),
+      speak: p.name + '. เลเวล ' + p.level + '. ธาตุ' + p.element + '. โจมตี ' + p.atk + '. เลือด ' + p.hp
+    };
   });
   renderPetSelectMenu(menuTitle);
+  // มือถือ: เปิดแผงเลือกมอนของเราทันที
+  if (typeof enterListNavigation === 'function') {
+    enterListNavigation('เลือกมอนของเรา');
+  } else if (typeof syncA11yList === 'function') {
+    syncA11yList('เลือกมอนของเรา', true);
+  }
+  speakOnly('พบศัตรู. เลือกมอนของเรา. ' + (menuOptions[0] ? menuOptions[0].speak : ''));
 }
 
 function renderPetSelectMenu(title) {
@@ -55,8 +66,10 @@ function renderPetSelectMenu(title) {
   t += 'ลูกศรขึ้น/ลง เลือก | Enter ยืนยัน | Esc ยกเลิก';
   announce(t, false);
   if (menuOptions[menuCursor]) {
-    speakOnly((menuCursor + 1) + ' จาก ' + menuOptions.length + '. ' + menuOptions[menuCursor].label);
+    var line = menuOptions[menuCursor].speak || menuOptions[menuCursor].label;
+    speakOnly((menuCursor + 1) + ' จาก ' + menuOptions.length + '. ' + line);
   }
+  if (typeof syncA11yList === 'function') syncA11yList('เลือกมอนของเรา', false);
 }
 
 

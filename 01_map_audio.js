@@ -8,7 +8,7 @@ let lastMoveTime = 0;
 const MOVE_COOLDOWN = 450; // มิลลิวินาที (ยิ่งมากยิ่งเดินช้า)
 
 const bgm = new Audio('music-bg.wav');
-bgm.loop = true; bgm.volume = 0.50;
+bgm.loop = true; bgm.volume = 0.40;
 
 const sounds = {
   // เดิน

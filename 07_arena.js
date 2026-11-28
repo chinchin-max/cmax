@@ -13,9 +13,19 @@ function startArenaFromCity() {
   menuTitle = 'ลานประลองไตรภูมิ\nชัยชนะสะสม: ' + (playerData.arenaWins || 0);
   menuCursor = 0;
   menuOptions = petInventory.map(function(p, i) {
-    return { id: i, label: p.name + ' Lv.' + p.level + ' (' + p.element + ') ATK' + p.atk + ' HP' + p.hp };
+    return {
+      id: i,
+      label: p.name + ' Lv.' + p.level + ' (' + p.element + ') ATK' + p.atk + ' HP' + p.hp,
+      speak: p.name + '. เลเวล ' + p.level + '. ธาตุ' + p.element
+    };
   });
   renderPetSelectMenu(menuTitle);
+  if (typeof enterListNavigation === 'function') {
+    enterListNavigation('เลือกมอนเข้าประลอง');
+  } else if (typeof syncA11yList === 'function') {
+    syncA11yList('เลือกมอนเข้าประลอง', true);
+  }
+  speakOnly('ลานประลอง. เลือกมอนของเรา.');
 }
 
 function showArena() {
