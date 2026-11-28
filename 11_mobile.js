@@ -43,6 +43,7 @@ function updateMobileControlsForMode() {
   if (inMenu) {
     document.body.classList.add('mode-menu');
     if (mode === 'inventory' || mode.indexOf('inventory') === 0) setActiveTab('bag');
+    else if (mode === 'settings') setActiveTab('more');
     else setActiveTab('map');
   } else {
     document.body.classList.remove('mode-menu');
@@ -311,8 +312,8 @@ function syncA11yList(titleText, preferFocus) {
           else if (mode === 'settings') renderSoundSettings(false);
           // ยืนยันเลือกรายการนี้
           if (typeof handleConfirm === 'function') handleConfirm();
-          // ถ้าจบต่อสู้แล้ว ให้ปิดแผง
-          if (mode === 'explore' || !battleState) {
+          // ปิดแผงเฉพาะเมื่อกลับหน้าสำรวจแล้วเท่านั้น (อย่าใช้ !battleState — ตั้งค่าเสียงจะถูกปิดผิด)
+          if (mode === 'explore') {
             if (typeof hideA11yList === 'function') hideA11yList();
             if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
           }
@@ -515,33 +516,35 @@ function renderSoundSettings(isOpen) {
 }
 
 function handleSoundSetting(id) {
+  function refreshSettingsList() {
+    buildSoundSettingsOptions();
+    renderSoundSettings(false);
+    // บังคับสร้างปุ่มใหม่เพราะป้ายระดับเสียงเปลี่ยน
+    var list = document.getElementById('a11yList');
+    if (list) list.innerHTML = '';
+    if (typeof syncA11yList === 'function') syncA11yList('ตั้งค่าเสียง', true);
+  }
   if (id === 'bgm') {
     audioSettings.bgm = nextVolume(audioSettings.bgm);
     applyAudioSettings();
     saveAudioSettings();
     if (typeof startBGM === 'function') startBGM();
     playSfx('menu');
-    buildSoundSettingsOptions();
-    renderSoundSettings(false);
-    if (typeof syncA11yList === 'function') syncA11yList('ตั้งค่าเสียง', true);
+    refreshSettingsList();
     speakOnly('เพลงพื้นหลัง. ' + volumeLabel(audioSettings.bgm));
   } else if (id === 'sfx') {
     audioSettings.sfx = nextVolume(audioSettings.sfx);
     applyAudioSettings();
     saveAudioSettings();
     playSfx('confirm');
-    buildSoundSettingsOptions();
-    renderSoundSettings(false);
-    if (typeof syncA11yList === 'function') syncA11yList('ตั้งค่าเสียง', true);
+    refreshSettingsList();
     speakOnly('เสียงเอฟเฟกต์. ' + volumeLabel(audioSettings.sfx));
   } else if (id === 'ambient') {
     audioSettings.ambient = nextVolume(audioSettings.ambient);
     applyAudioSettings();
     saveAudioSettings();
     playSfx('menu');
-    buildSoundSettingsOptions();
-    renderSoundSettings(false);
-    if (typeof syncA11yList === 'function') syncA11yList('ตั้งค่าเสียง', true);
+    refreshSettingsList();
     speakOnly('เสียงบรรยากาศ. ' + volumeLabel(audioSettings.ambient));
   } else if (id === 'test') {
     playSfx('hit');
@@ -552,6 +555,7 @@ function handleSoundSetting(id) {
     menuOptions = [];
     if (typeof hideA11yList === 'function') hideA11yList();
     if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
+    if (typeof setActiveTab === 'function') setActiveTab('map');
     announce('ปิดตั้งค่าเสียง');
   }
 }
