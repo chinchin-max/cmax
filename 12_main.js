@@ -79,11 +79,10 @@ window.onload = function() {
 
   // โฟกัสซ้ำหลายรอบ — บางเบราว์เซอร์รับหลัง paint
   requestAnimationFrame(function() {
-    focusGame();
-    setTimeout(focusGame, 0);
-    setTimeout(focusGame, 100);
-    setTimeout(focusGame, 300);
-    setTimeout(focusGame, 600);
+    if (!(('ontouchstart' in window) || (navigator.maxTouchPoints > 0))) {
+      focusGame();
+      setTimeout(focusGame, 100);
+    }
   });
 
   // ถ้ากลับมาแท็บนี้ ให้โฟกัสใหม่

@@ -56,7 +56,7 @@ function checkCurrentPosition() {
   const zone = getZoneName(r, c);
   const shop = getShopAt(r, c);
   const catchable = getCatchZone(zone) ? "มอนโผล่ได้ตอนเดิน / กด C ค้นหา" : "เขตปลอดภัย (มีร้าน + ลานประลอง)";
-  let text = "" + (r+1) + ", " + (c+1) + zone + (playerData.arenaWins || 0);
+  let text = "พิกัด: " + (r+1) + ", " + (c+1) + "\nโซน: " + zone + "\n" + catchable + "\nชัยชนะลานประลอง: " + (playerData.arenaWins || 0);
   if (shop) text += "\n\nคุณยืนอยู่หน้า: " + shop.name + "\nกด Enter เพื่อเปิด";
   announce(text);
 }

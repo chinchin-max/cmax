@@ -5,7 +5,7 @@ const size = 100;
 let r = 49;
 let c = 49;
 let lastMoveTime = 0;
-const MOVE_COOLDOWN = 450; // มิลลิวินาที (ยิ่งมากยิ่งเดินช้า)
+const MOVE_COOLDOWN = 220; // มิลลิวินาที (ยิ่งมากยิ่งเดินช้า)
 
 const bgm = new Audio('music-bg.wav');
 bgm.loop = true; bgm.volume = 0.40;
@@ -145,19 +145,21 @@ function announce(text, speakAll) {
 
 // อ่านเฉพาะข้อความที่ส่งมา — ใช้ทุกครั้งที่ต้องการให้อ่านจอพูด
 // เคลียร์ก่อนใส่ใหม่ เพื่อบังคับให้อ่านซ้ำได้
+var _speakTimer = null;
+var _lastSpeak = '';
 function speakOnly(line) {
-  if (window._a11yQuiet) return; // TalkBack กำลังอ่านปุ่มรายการเอง
+  if (window._a11yQuiet) return;
   const sr = document.getElementById('srAnnouncer');
   if (!sr) return;
   var t = String(line || '').replace(/^\s*▶\s*/g, '').replace(/\n+/g, '. ').trim();
   if (!t) return;
-  // เคลียร์ก่อน แล้วสลับ role ชั่วคราวเป็น alert เพื่อให้ TalkBack/VoiceOver ตัดข้อความเก่าแล้วอ่านใหม่
-  sr.innerText = '';
-  sr.setAttribute('role', 'alert');
-  setTimeout(function() {
-    sr.innerText = t;
-    setTimeout(function() {
-      sr.setAttribute('role', 'status');
-    }, 400);
-  }, 40);
+  // กันพูดซ้ำข้อความเดิมถี่ ๆ
+  if (t === _lastSpeak && _speakTimer) return;
+  _lastSpeak = t;
+  if (_speakTimer) clearTimeout(_speakTimer);
+  sr.textContent = '';
+  _speakTimer = setTimeout(function() {
+    sr.textContent = t;
+    _speakTimer = null;
+  }, 16);
 }

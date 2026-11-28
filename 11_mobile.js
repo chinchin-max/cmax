@@ -77,10 +77,10 @@ function startGame() {
   playSfx('confirm');
   announce("เกมเริ่มแล้ว!");
   if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
-  focusGame();
-  setTimeout(focusGame, 50);
-  setTimeout(focusGame, 150);
-  setTimeout(focusGame, 400);
+  if (!isTouchDevice()) {
+    focusGame();
+    setTimeout(focusGame, 100);
+  }
 }
 
 // ดึงโฟกัสกลับเกมทุกครั้งที่มี interaction (ยกเว้นพิมพ์แชท)
@@ -201,9 +201,8 @@ function enterListNavigation(title) {
       setTimeout(focusFirst, 50);
     }
   }
-  setTimeout(focusFirst, 30);
-  setTimeout(focusFirst, 120);
-  setTimeout(focusFirst, 280);
+  setTimeout(focusFirst, 20);
+  setTimeout(focusFirst, 100);
 }
 
 function hideA11yList() {
@@ -330,9 +329,7 @@ function syncA11yList(titleText, preferFocus) {
       activeId = el.id;
       if (preferFocus && !el.disabled) {
         // โฟกัสรายการเพื่อให้ TalkBack ปัดต่อได้ทันที ไม่ต้องไปที่ปุ่มเดิน
-        setTimeout(function() {
-          try { el.focus({ preventScroll: true }); } catch (e) { try { el.focus(); } catch (e2) {} }
-        }, 80);
+        try { el.focus({ preventScroll: true }); } catch (e) { try { el.focus(); } catch (e2) {} }
       }
     }
   }
@@ -402,7 +399,7 @@ function setupActionButtons() {
       }
       // กันกดซ้ำจาก touchend + click
       const now = Date.now();
-      if (now - lastFire < 280) return;
+      if (now - lastFire < 120) return;
       lastFire = now;
 
       startBGM();
