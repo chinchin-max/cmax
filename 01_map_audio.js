@@ -5,70 +5,47 @@ const size = 100;
 let r = 49;
 let c = 49;
 let lastMoveTime = 0;
-const MOVE_COOLDOWN = 900; // มิลลิวินาที (ยิ่งมากยิ่งเดินช้า)
+const MOVE_COOLDOWN = 220; // มิลลิวินาที (ยิ่งมากยิ่งเดินช้า)
 
-function createSafeAudio(src, options) {
-  const opts = options || {};
-  const audio = new Audio();
-  audio.preload = opts.preload || 'metadata';
-  audio.loop = !!opts.loop;
-  if (typeof opts.volume === 'number') {
-    audio.volume = Math.max(0, Math.min(1, opts.volume));
-  }
-  audio.addEventListener('error', function() {
-    audio.dataset.loadError = '1';
-  }, { once: true });
-  audio.src = src;
-  return audio;
-}
-
-function safePlayAudio(audioEl, resetTime) {
-  if (!audioEl || (audioEl.dataset && audioEl.dataset.loadError === '1')) return;
-  try {
-    if (resetTime) audioEl.currentTime = 0;
-    const p = audioEl.play();
-    if (p && typeof p.catch === 'function') p.catch(function() {});
-  } catch (e) {}
-}
-
-const bgm = createSafeAudio('music-bg.wav', { loop: true, volume: 0.40 });
+const bgm = new Audio('music-bg.wav');
+bgm.loop = true; bgm.volume = 0.40;
 
 const sounds = {
   // เดิน
-  grass:    [createSafeAudio('step_grass1.wav'), createSafeAudio('step_grass2.wav'), createSafeAudio('step_grass3.wav')],
-  mountain: [createSafeAudio('step_mountain.wav')],
-  stone:    [createSafeAudio('step_stone1.wav'), createSafeAudio('step_stone2.wav')],
-  dirt:     [createSafeAudio('step_dirt1.wav'), createSafeAudio('step_dirt2.wav')],
-  water:    [createSafeAudio('step_water1.wav'), createSafeAudio('step_water2.wav')],
-  wall:     createSafeAudio('wall_hit.wav'),
-  edge:     createSafeAudio('edge_hit.wav'),
+  grass:    [new Audio('step_grass1.wav'), new Audio('step_grass2.wav'), new Audio('step_grass3.wav')],
+  mountain: [new Audio('step_mountain.wav')],
+  stone:    [new Audio('step_stone1.wav'), new Audio('step_stone2.wav')],
+  dirt:     [new Audio('step_dirt1.wav'), new Audio('step_dirt2.wav')],
+  water:    [new Audio('step_water1.wav'), new Audio('step_water2.wav')],
+  wall: new Audio('wall_hit.wav'),
+  edge: new Audio('edge_hit.wav'),
   // ambient
-  ocean:    createSafeAudio('ocean_ambient.wav', { loop: true, preload: 'none', volume: 0.35 }),
-  forest:   createSafeAudio('forest_ambient.wav', { loop: true, preload: 'none', volume: 0.42 }),
+  ocean: new Audio('ocean_ambient.wav'),
+  forest: new Audio('forest_ambient.wav'),
   // ต่อสู้ / มอน
-  encounter: createSafeAudio('sfx_encounter.wav'),
-  attack:    createSafeAudio('sfx_attack.wav'),
-  hit:       createSafeAudio('sfx_hit.wav'),
-  miss:      createSafeAudio('sfx_miss.wav'),
-  win:       createSafeAudio('sfx_win.wav'),
-  lose:      createSafeAudio('sfx_lose.wav'),
-  flee:      createSafeAudio('sfx_flee.wav'),
+  encounter: new Audio('sfx_encounter.wav'),
+  attack:    new Audio('sfx_attack.wav'),
+  hit:       new Audio('sfx_hit.wav'),
+  miss:      new Audio('sfx_miss.wav'),
+  win:       new Audio('sfx_win.wav'),
+  lose:      new Audio('sfx_lose.wav'),
+  flee:      new Audio('sfx_flee.wav'),
   // บอล
-  throw_ball: createSafeAudio('sfx_throw_ball.wav'),
-  catch_ok:   createSafeAudio('sfx_catch_ok.wav'),
-  catch_fail: createSafeAudio('sfx_catch_fail.wav'),
+  throw_ball: new Audio('sfx_throw_ball.wav'),
+  catch_ok:   new Audio('sfx_catch_ok.wav'),
+  catch_fail: new Audio('sfx_catch_fail.wav'),
   // ร้าน / คลัง
-  shop_open:  createSafeAudio('sfx_shop_open.wav'),
-  buy:        createSafeAudio('sfx_buy.wav'),
-  no_money:   createSafeAudio('sfx_no_money.wav'),
-  sell:       createSafeAudio('sfx_sell.wav'),
-  feed:       createSafeAudio('sfx_feed.wav'),
-  evolve:     createSafeAudio('sfx_evolve.wav'),
-  menu:       createSafeAudio('sfx_menu.wav'),
+  shop_open:  new Audio('sfx_shop_open.wav'),
+  buy:        new Audio('sfx_buy.wav'),
+  no_money:   new Audio('sfx_no_money.wav'),
+  sell:       new Audio('sfx_sell.wav'),
+  feed:       new Audio('sfx_feed.wav'),
+  evolve:     new Audio('sfx_evolve.wav'),
+  menu:       new Audio('sfx_menu.wav'),
   // อื่นๆ
-  chat:       createSafeAudio('sfx_chat.wav'),
-  error:      createSafeAudio('sfx_error.wav'),
-  confirm:    createSafeAudio('sfx_confirm.wav')
+  chat:       new Audio('sfx_chat.wav'),
+  error:      new Audio('sfx_error.wav'),
+  confirm:    new Audio('sfx_confirm.wav')
 };
 
 Object.values(sounds).forEach(item => {
@@ -78,20 +55,15 @@ Object.values(sounds).forEach(item => {
 });
 sounds.ocean.loop = true;  sounds.ocean.volume = 0.35;
 sounds.forest.loop = true; sounds.forest.volume = 0.42;
+// ปรับระดับ SFX บางตัว
 ['encounter','win','evolve','catch_ok'].forEach(function(k) {
   if (sounds[k]) sounds[k].volume = 0.65;
 });
 
-// ===== ระดับเสียง (บันทึก localStorage) — ใช้ได้ทั้งแบบขั้น (steps) และแบบค่าตรง (0.0 - 1.0) =====
+// ===== ระดับเสียง (บันทึก localStorage) =====
 const STORAGE_KEY_VOLUME = 'tri_monster_volume_v1';
 const VOLUME_STEPS = [0, 0.25, 0.5, 0.75, 1];
 const VOLUME_LABELS = ['ปิด', 'เบา', 'ปานกลาง', 'ค่อนข้างดัง', 'ดังสุด'];
-const AUDIO_CHANNELS = ['bgm', 'sfx', 'ambient'];
-const AUDIO_CHANNEL_NAMES = {
-  bgm: 'เพลงพื้นหลัง (BGM)',
-  sfx: 'เอฟเฟกต์เสียง (SFX)',
-  ambient: 'เสียงบรรยากาศ (Ambient)'
-};
 
 var audioSettings = {
   bgm: 0.4,
@@ -99,20 +71,14 @@ var audioSettings = {
   ambient: 0.35
 };
 
-function clampVolume(v) {
-  var num = Number(v);
-  if (isNaN(num)) return 0;
-  return Math.max(0, Math.min(1, num));
-}
-
 function loadAudioSettings() {
   try {
     var raw = localStorage.getItem(STORAGE_KEY_VOLUME);
     if (!raw) return;
     var o = JSON.parse(raw);
-    if (typeof o.bgm === 'number') audioSettings.bgm = clampVolume(o.bgm);
-    if (typeof o.sfx === 'number') audioSettings.sfx = clampVolume(o.sfx);
-    if (typeof o.ambient === 'number') audioSettings.ambient = clampVolume(o.ambient);
+    if (typeof o.bgm === 'number') audioSettings.bgm = o.bgm;
+    if (typeof o.sfx === 'number') audioSettings.sfx = o.sfx;
+    if (typeof o.ambient === 'number') audioSettings.ambient = o.ambient;
   } catch (e) {}
 }
 
@@ -123,155 +89,71 @@ function saveAudioSettings() {
 }
 
 function volumeLabel(v) {
-  var val = clampVolume(v);
   var best = 0, bestDiff = 99;
   for (var i = 0; i < VOLUME_STEPS.length; i++) {
-    var d = Math.abs(VOLUME_STEPS[i] - val);
+    var d = Math.abs(VOLUME_STEPS[i] - v);
     if (d < bestDiff) { bestDiff = d; best = i; }
   }
-  return VOLUME_LABELS[best] + ' ' + Math.round(val * 100) + '%';
-}
-
-function nearestStepIndex(v) {
-  var val = clampVolume(v);
-  var idx = 0, bestDiff = 99;
-  for (var i = 0; i < VOLUME_STEPS.length; i++) {
-    var d = Math.abs(VOLUME_STEPS[i] - val);
-    if (d < bestDiff) { bestDiff = d; idx = i; }
-  }
-  return idx;
+  return VOLUME_LABELS[best] + ' ' + Math.round(v * 100) + '%';
 }
 
 function nextVolume(v) {
-  var idx = nearestStepIndex(v);
+  var idx = 0, bestDiff = 99;
+  for (var i = 0; i < VOLUME_STEPS.length; i++) {
+    var d = Math.abs(VOLUME_STEPS[i] - v);
+    if (d < bestDiff) { bestDiff = d; idx = i; }
+  }
   return VOLUME_STEPS[(idx + 1) % VOLUME_STEPS.length];
-}
-
-function stepChannelVolume(channel, deltaStep) {
-  if (AUDIO_CHANNELS.indexOf(channel) === -1) return audioSettings;
-  var curIdx = nearestStepIndex(audioSettings[channel]);
-  var nextIdx = Math.max(0, Math.min(VOLUME_STEPS.length - 1, curIdx + (deltaStep || 1)));
-  return setAudioChannelVolume(channel, VOLUME_STEPS[nextIdx]);
-}
-
-function setAudioChannelVolume(channel, value) {
-  if (AUDIO_CHANNELS.indexOf(channel) === -1) return audioSettings;
-  audioSettings[channel] = clampVolume(value);
-  applyAudioSettings();
-  saveAudioSettings();
-  return audioSettings;
-}
-
-function setAllAudioVolume(value) {
-  var v = clampVolume(value);
-  audioSettings.bgm = v;
-  audioSettings.sfx = v;
-  audioSettings.ambient = v;
-  applyAudioSettings();
-  saveAudioSettings();
-  return audioSettings;
 }
 
 function applyAudioSettings() {
   try {
     if (bgm) {
-      bgm.volume = clampVolume(audioSettings.bgm);
+      bgm.volume = Math.max(0, Math.min(1, audioSettings.bgm));
+      // ถ้าเพลงกำลังเล่นอยู่ ให้ดังตามค่าใหม่ทันที
+      if (!bgm.paused && audioSettings.bgm > 0 && bgm.volume === 0) {
+        /* noop */
+      }
     }
   } catch (e) {}
-
-  var sfxVol = clampVolume(audioSettings.sfx);
-  var ambVol = clampVolume(audioSettings.ambient);
-
   Object.keys(sounds).forEach(function(k) {
     var item = sounds[k];
     if (k === 'ocean' || k === 'forest') {
-      if (item) item.volume = ambVol;
+      if (item) item.volume = audioSettings.ambient;
       return;
     }
     if (Array.isArray(item)) {
-      item.forEach(function(s) { s.volume = clampVolume(sfxVol * 0.85); });
+      item.forEach(function(s) { s.volume = audioSettings.sfx * 0.85; });
     } else if (item) {
-      item.volume = sfxVol;
+      item.volume = audioSettings.sfx;
     }
   });
-
+  // บางเสียงดังหน่อยตามเดิม
   ['encounter','win','evolve','catch_ok'].forEach(function(k) {
-    if (sounds[k]) sounds[k].volume = clampVolume(sfxVol * 1.15);
+    if (sounds[k]) sounds[k].volume = Math.min(1, audioSettings.sfx * 1.15);
   });
-}
-
-function buildSoundMenuOptions() {
-  return AUDIO_CHANNELS.map(function(ch) {
-    var labelName = AUDIO_CHANNEL_NAMES[ch] || ch;
-    var lbl = volumeLabel(audioSettings[ch]);
-    return {
-      id: ch,
-      label: labelName + ': ' + lbl,
-      speak: labelName + ' ' + lbl
-    };
-  });
-}
-
-function renderSoundSettings(isOpen, noticeText) {
-  menuOptions = buildSoundMenuOptions();
-  if (menuCursor < 0 || menuCursor >= menuOptions.length) menuCursor = 0;
-
-  var t = '=== ตั้งค่าเสียง ===\n';
-  if (noticeText) t += '[' + noticeText + ']\n';
-  t += '\n';
-
-  menuOptions.forEach(function(opt, i) {
-    var mark = (i === menuCursor) ? '▶ ' : '  ';
-    t += mark + opt.label + '\n\n';
-  });
-  t += '↑↓ เลือกช่องเสียง · +/− หรือ Enter ปรับระดับ · Esc ปิด';
-
-  announce(t, false);
-  var cur = menuOptions[menuCursor];
-  if (cur) {
-    var line = (menuCursor + 1) + ' จาก ' + menuOptions.length + '. ' + cur.speak;
-    if (noticeText) speakOnly(noticeText + '. ' + line);
-    else if (isOpen) speakOnly('ตั้งค่าเสียง. ' + line);
-    else speakOnly(line);
-  }
-  if (typeof syncA11yList === 'function') syncA11yList('ตั้งค่าเสียง', !!isOpen);
-}
-
-function openSoundSettings() {
-  mode = 'settings';
-  menuTitle = 'ตั้งค่าเสียง';
-  menuCursor = 0;
-  playSfx('menu');
-  renderSoundSettings(true);
-  if (typeof enterListNavigation === 'function') enterListNavigation('ตั้งค่าเสียง');
-}
-
-function adjustSelectedSound(deltaStep) {
-  if (mode !== 'settings') return;
-  var opts = buildSoundMenuOptions();
-  var cur = opts[menuCursor];
-  if (!cur) return;
-  stepChannelVolume(cur.id, deltaStep);
-  playSfx('confirm');
-  var updatedLabel = volumeLabel(audioSettings[cur.id]);
-  var msg = (AUDIO_CHANNEL_NAMES[cur.id] || cur.id) + ' เป็น ' + updatedLabel;
-  renderSoundSettings(false, msg);
 }
 
 loadAudioSettings();
 applyAudioSettings();
 
+
+
 function playSfx(key) {
   const s = sounds[key];
-  if (!s || Array.isArray(s)) return;
-  safePlayAudio(s, true);
+  if (!s) return;
+  try {
+    s.currentTime = 0;
+    s.play().catch(function() {});
+  } catch (e) {}
 }
 
 function playStepSound(type = 'dirt') {
   const list = sounds[type];
   if (!list || !list.length) return;
   const sound = list[Math.floor(Math.random() * list.length)];
-  safePlayAudio(sound, true);
+  sound.currentTime = 0;
+  sound.play().catch(() => {});
 }
 function playWallSound() { playSfx('wall'); }
 function playEdgeSound() { playSfx('edge'); }
@@ -279,16 +161,10 @@ function playEdgeSound() { playSfx('edge'); }
 function updateAmbientSound(zone) {
   const isOcean  = zone.includes("มหาสมุทร");
   const isForest = zone.includes("ป่าหิมพานต์");
-  if (isOcean) {
-    if (sounds.ocean && sounds.ocean.paused) safePlayAudio(sounds.ocean, true);
-  } else if (sounds.ocean && !sounds.ocean.paused) {
-    sounds.ocean.pause();
-  }
-  if (isForest) {
-    if (sounds.forest && sounds.forest.paused) safePlayAudio(sounds.forest, true);
-  } else if (sounds.forest && !sounds.forest.paused) {
-    sounds.forest.pause();
-  }
+  if (isOcean)  { if (sounds.ocean.paused)  { sounds.ocean.currentTime = 0;  sounds.ocean.play().catch(() => {}); } }
+  else if (!sounds.ocean.paused)  sounds.ocean.pause();
+  if (isForest) { if (sounds.forest.paused) { sounds.forest.currentTime = 0; sounds.forest.play().catch(() => {}); } }
+  else if (!sounds.forest.paused) sounds.forest.pause();
 }
 
 function getZoneName(row, col) {
@@ -336,6 +212,9 @@ function getShopAt(row, col) {
   return CITY_SHOPS[row + "," + col] || null;
 }
 
+// announce(text, speakAll)
+// speakAll === false → อัปเดตหน้าจออย่างเดียว ไม่อ่านออกเสียง
+// speakAll ปกติ → อ่านข้อความผ่าน srAnnouncer เท่านั้น (ไม่ผ่าน #display)
 function announce(text, speakAll) {
   const disp = document.getElementById('display');
   if (disp) disp.innerText = text;
@@ -343,6 +222,8 @@ function announce(text, speakAll) {
   speakOnly(text);
 }
 
+// อ่านเฉพาะข้อความที่ส่งมา — ใช้ทุกครั้งที่ต้องการให้อ่านจอพูด
+// เคลียร์ก่อนใส่ใหม่ เพื่อบังคับให้อ่านซ้ำได้
 var _speakTimer = null;
 var _lastSpeak = '';
 function speakOnly(line) {
@@ -351,6 +232,7 @@ function speakOnly(line) {
   if (!sr) return;
   var t = String(line || '').replace(/^\s*▶\s*/g, '').replace(/\n+/g, '. ').trim();
   if (!t) return;
+  // กันพูดซ้ำข้อความเดิมถี่ ๆ
   if (t === _lastSpeak && _speakTimer) return;
   _lastSpeak = t;
   if (_speakTimer) clearTimeout(_speakTimer);
@@ -360,4 +242,3 @@ function speakOnly(line) {
     _speakTimer = null;
   }, 16);
 }
-

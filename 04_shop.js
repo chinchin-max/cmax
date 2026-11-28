@@ -1,13 +1,10 @@
 // ============================================================
 // 4. ร้านค้า
 // ============================================================
-let lastShopNotice = '';
-
 function openShopById(shopId) {
   mode = 'shop';
   const inv = playerData.inventory;
   menuCursor = 0;
-  lastShopNotice = '';
   playSfx('shop_open');
   if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
 
@@ -56,11 +53,7 @@ function openShopById(shopId) {
 }
 
 function renderMenu(title, hint, isOpen) {
-  let t = title + "\n";
-  if (lastShopNotice) {
-    t += "[" + lastShopNotice + "]\n";
-  }
-  t += "\n";
+  let t = title + "\n\n";
   menuOptions.forEach(function(opt, i) {
     const mark = (i === menuCursor ? "▶ " : "  ");
     t += mark + opt.label + "\n\n";
@@ -70,13 +63,8 @@ function renderMenu(title, hint, isOpen) {
   announce(t, false);
   if (!menuOptions[menuCursor]) return;
   var line = (menuCursor + 1) + ' จาก ' + menuOptions.length + '. ' + menuOptions[menuCursor].label;
-  if (lastShopNotice && !isOpen) {
-    speakOnly(lastShopNotice + '. ' + line);
-  } else if (isOpen) {
-    speakOnly(title + '. ' + line);
-  } else {
-    speakOnly(line);
-  }
+  if (isOpen) speakOnly(title + '. ' + line);
+  else speakOnly(line);
   if (typeof syncA11yList === 'function') syncA11yList(title || menuTitle || 'ร้านค้า', !!isOpen);
 }
 
@@ -96,7 +84,6 @@ function menuMove(delta) {
 
   playSfx('menu');
   if (mode === 'shop') {
-    lastShopNotice = '';
     renderMenu(menuTitle || 'ร้านค้า', 'ลูกศรขึ้น/ลง เลือก | Enter ซื้อ | Esc กลับ');
   } else if (mode === 'inventory') {
     renderInventoryMenu();
@@ -114,11 +101,13 @@ function menuMove(delta) {
     renderSoundSettings();
   }
   if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
+  // อัปเดตไฮไลต์ในลิสต์ แต่ไม่แย่งโฟกัส (ปุ่มทิศทางใช้ speakOnly แล้ว)
   if (typeof syncA11yList === 'function') {
     var ttl = menuTitle || (mode === 'inventory' ? 'กระเป๋า' : 'รายการ');
     syncA11yList(ttl, false);
   }
 }
+
 
 function buy(itemKey) {
   if (mode !== 'shop') return;
@@ -126,7 +115,7 @@ function buy(itemKey) {
   if (!item) return;
   if (playerData.money < item.price) {
     playSfx('no_money');
-    lastShopNotice = "เงินไม่พอ! ต้องการ " + item.price + " G (มี " + playerData.money + " G)";
+    announce("เงินไม่พอ! ต้องการ " + item.price + " G\n(ตอนนี้มี " + playerData.money + " G)");
     return;
   }
   playerData.money -= item.price;
@@ -134,5 +123,5 @@ function buy(itemKey) {
   saveGame();
   updateStatusBar();
   playSfx('buy');
-  lastShopNotice = "ซื้อ " + item.name + " สำเร็จ! (-" + item.price + " G) เงินเหลือ " + playerData.money + " G";
+  announce("ซื้อ " + item.name + " สำเร็จ! (-" + item.price + " G)\nเงินเหลือ " + playerData.money + " G");
 }
