@@ -49,6 +49,11 @@ function updateMobileControlsForMode() {
     document.body.classList.remove('mode-menu');
     setActiveTab('map');
     if (typeof hideA11yList === 'function') hideA11yList();
+    var vp = document.getElementById('volumePanel');
+    if (vp && mode !== 'settings') {
+      vp.style.display = 'none';
+      vp.classList.remove('visible');
+    }
   }
 
   var hint = document.getElementById('mobileHint');
@@ -450,6 +455,7 @@ function setupActionButtons() {
         else if (typeof rereadCurrentMenuItem === 'function') rereadCurrentMenuItem();
       } else if (action === 'tab-map') {
         if (mode !== 'explore') {
+          if (typeof closeVolumePanel === 'function') closeVolumePanel();
           mode = 'explore';
           battleState = null;
           menuOptions = [];
@@ -487,97 +493,134 @@ function setupSheetBack() {
 }
 
 
-// ===== เมนูตั้งค่าเสียง =====
+
+
+// ===== แผงตั้งค่าเสียง (ปุ่ม + / − มือถือกดได้ชัวร์) =====
+function stepVolume(v, dir) {
+  var steps = VOLUME_STEPS;
+  var idx = 0, best = 99;
+  for (var i = 0; i < steps.length; i++) {
+    var d = Math.abs(steps[i] - v);
+    if (d < best) { best = d; idx = i; }
+  }
+  idx = idx + (dir < 0 ? -1 : 1);
+  if (idx < 0) idx = 0;
+  if (idx >= steps.length) idx = steps.length - 1;
+  return steps[idx];
+}
+
+function refreshVolumePanelUI() {
+  function pct(v) { return Math.round(v * 100) + '%'; }
+  var bgmEl = document.getElementById('volBgmVal');
+  var sfxEl = document.getElementById('volSfxVal');
+  var ambEl = document.getElementById('volAmbVal');
+  if (bgmEl) {
+    bgmEl.textContent = pct(audioSettings.bgm);
+    bgmEl.setAttribute('aria-label', 'เพลงพื้นหลัง ' + volumeLabel(audioSettings.bgm) + ' แตะเพื่อเพิ่ม');
+  }
+  if (sfxEl) {
+    sfxEl.textContent = pct(audioSettings.sfx);
+    sfxEl.setAttribute('aria-label', 'เอฟเฟกต์ ' + volumeLabel(audioSettings.sfx) + ' แตะเพื่อเพิ่ม');
+  }
+  if (ambEl) {
+    ambEl.textContent = pct(audioSettings.ambient);
+    ambEl.setAttribute('aria-label', 'บรรยากาศ ' + volumeLabel(audioSettings.ambient) + ' แตะเพื่อเพิ่ม');
+  }
+}
+
 function openSoundSettings() {
   mode = 'settings';
-  menuCursor = 0;
-  menuTitle = 'ตั้งค่าเสียง';
-  buildSoundSettingsOptions();
+  menuOptions = [];
+  if (typeof hideA11yList === 'function') hideA11yList();
   if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
-  renderSoundSettings(true);
-  // บังคับโชว์แผง + สร้างปุ่มใหม่เสมอ
-  var panel = document.getElementById('a11yListPanel');
-  var list = document.getElementById('a11yList');
-  if (list) list.innerHTML = '';
-  if (typeof syncA11yList === 'function') syncA11yList('ตั้งค่าเสียง', true);
+  var panel = document.getElementById('volumePanel');
   if (panel) {
     panel.style.display = 'block';
-    panel.style.visibility = 'visible';
-    panel.style.pointerEvents = 'auto';
-    panel.style.zIndex = '6000';
     panel.classList.add('visible');
     panel.removeAttribute('aria-hidden');
   }
-  if (typeof enterListNavigation === 'function') enterListNavigation('ตั้งค่าเสียง');
-  speakOnly('ตั้งค่าเสียง. แตะรายการเพื่อปรับระดับเสียง');
-}
-
-function buildSoundSettingsOptions() {
-  menuOptions = [
-    { id: 'bgm', label: 'เพลงพื้นหลัง: ' + volumeLabel(audioSettings.bgm), speak: 'เพลงพื้นหลัง. ' + volumeLabel(audioSettings.bgm) + '. แตะเพื่อเปลี่ยนระดับ' },
-    { id: 'sfx', label: 'เสียงเอฟเฟกต์: ' + volumeLabel(audioSettings.sfx), speak: 'เสียงเอฟเฟกต์. ' + volumeLabel(audioSettings.sfx) + '. แตะเพื่อเปลี่ยนระดับ' },
-    { id: 'ambient', label: 'เสียงบรรยากาศ: ' + volumeLabel(audioSettings.ambient), speak: 'เสียงบรรยากาศ. ' + volumeLabel(audioSettings.ambient) + '. แตะเพื่อเปลี่ยนระดับ' },
-    { id: 'test', label: 'ทดลองเสียงเอฟเฟกต์', speak: 'ทดลองเสียงเอฟเฟกต์' },
-    { id: 'back', label: 'กลับ', speak: 'กลับ' }
-  ];
-}
-
-function renderSoundSettings(isOpen) {
-  var t = '=== ตั้งค่าเสียง ===\n\n';
-  menuOptions.forEach(function(opt, i) {
-    t += (i === menuCursor ? '▶ ' : '  ') + opt.label + '\n';
-  });
-  t += '\nแตะรายการเพื่อปรับระดับ · กลับเพื่อออก';
-  announce(t, false);
-  if (menuOptions[menuCursor]) {
-    var line = menuOptions[menuCursor].speak || menuOptions[menuCursor].label;
-    if (isOpen) speakOnly('ตั้งค่าเสียง. ' + line);
-    else speakOnly(line);
+  refreshVolumePanelUI();
+  speakOnly('ตั้งค่าเสียง. ใช้ปุ่มลดหรือเพิ่มเพื่อปรับระดับ');
+  var first = document.querySelector('#volumePanel .vol-btn');
+  if (first) {
+    try { first.focus(); } catch (e) {}
   }
-  if (typeof syncA11yList === 'function') syncA11yList('ตั้งค่าเสียง', !!isOpen);
 }
 
-function handleSoundSetting(id) {
-  function refreshSettingsList() {
-    buildSoundSettingsOptions();
-    renderSoundSettings(false);
-    // บังคับสร้างปุ่มใหม่เพราะป้ายระดับเสียงเปลี่ยน
-    var list = document.getElementById('a11yList');
-    if (list) list.innerHTML = '';
-    if (typeof syncA11yList === 'function') syncA11yList('ตั้งค่าเสียง', true);
+function closeVolumePanel() {
+  var panel = document.getElementById('volumePanel');
+  if (panel) {
+    panel.style.display = 'none';
+    panel.classList.remove('visible');
+    panel.setAttribute('aria-hidden', 'true');
   }
-  if (id === 'bgm') {
-    audioSettings.bgm = nextVolume(audioSettings.bgm);
-    applyAudioSettings();
-    saveAudioSettings();
-    if (typeof startBGM === 'function') startBGM();
-    playSfx('menu');
-    refreshSettingsList();
-    speakOnly('เพลงพื้นหลัง. ' + volumeLabel(audioSettings.bgm));
-  } else if (id === 'sfx') {
-    audioSettings.sfx = nextVolume(audioSettings.sfx);
-    applyAudioSettings();
-    saveAudioSettings();
-    playSfx('confirm');
-    refreshSettingsList();
-    speakOnly('เสียงเอฟเฟกต์. ' + volumeLabel(audioSettings.sfx));
-  } else if (id === 'ambient') {
-    audioSettings.ambient = nextVolume(audioSettings.ambient);
-    applyAudioSettings();
-    saveAudioSettings();
-    playSfx('menu');
-    refreshSettingsList();
-    speakOnly('เสียงบรรยากาศ. ' + volumeLabel(audioSettings.ambient));
-  } else if (id === 'test') {
-    playSfx('hit');
-    setTimeout(function() { playSfx('win'); }, 200);
-    speakOnly('ทดลองเสียง');
-  } else if (id === 'back') {
+  if (mode === 'settings') {
     mode = 'explore';
     menuOptions = [];
-    if (typeof hideA11yList === 'function') hideA11yList();
-    if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
-    if (typeof setActiveTab === 'function') setActiveTab('map');
-    announce('ปิดตั้งค่าเสียง');
   }
+  if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
+  if (typeof setActiveTab === 'function') setActiveTab('map');
+}
+
+function adjustVolume(kind, dir) {
+  if (!audioSettings) return;
+  if (kind === 'bgm') audioSettings.bgm = stepVolume(audioSettings.bgm, dir);
+  else if (kind === 'sfx') audioSettings.sfx = stepVolume(audioSettings.sfx, dir);
+  else if (kind === 'ambient') audioSettings.ambient = stepVolume(audioSettings.ambient, dir);
+  else return;
+  applyAudioSettings();
+  saveAudioSettings();
+  refreshVolumePanelUI();
+  if (kind === 'bgm' && typeof startBGM === 'function') startBGM();
+  if (kind === 'sfx') playSfx('confirm');
+  else playSfx('menu');
+  var label = kind === 'bgm' ? 'เพลงพื้นหลัง' : kind === 'sfx' ? 'เอฟเฟกต์' : 'บรรยากาศ';
+  var val = kind === 'bgm' ? audioSettings.bgm : kind === 'sfx' ? audioSettings.sfx : audioSettings.ambient;
+  speakOnly(label + '. ' + volumeLabel(val));
+  // อัปเดตจอข้อความ
+  var disp = document.getElementById('display');
+  if (disp) {
+    disp.innerText =
+      '=== ตั้งค่าเสียง ===\n\n' +
+      'เพลงพื้นหลัง: ' + volumeLabel(audioSettings.bgm) + '\n' +
+      'เสียงเอฟเฟกต์: ' + volumeLabel(audioSettings.sfx) + '\n' +
+      'เสียงบรรยากาศ: ' + volumeLabel(audioSettings.ambient) + '\n\n' +
+      'กด + / − เพื่อปรับ · ปิด เพื่อออก';
+  }
+}
+
+function setupVolumePanel() {
+  var panel = document.getElementById('volumePanel');
+  if (!panel || panel._ready) return;
+  panel._ready = true;
+  function bind(el, fn) {
+    if (!el) return;
+    var last = 0;
+    function fire(e) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      var now = Date.now();
+      if (now - last < 200) return;
+      last = now;
+      startBGM();
+      fn(e);
+    }
+    el.addEventListener('click', fire);
+    el.addEventListener('touchend', fire, { passive: false });
+  }
+  panel.querySelectorAll('.vol-btn[data-vol]').forEach(function(btn) {
+    bind(btn, function() {
+      var kind = btn.getAttribute('data-vol');
+      var dir = parseInt(btn.getAttribute('data-dir'), 10) || 1;
+      adjustVolume(kind, dir);
+    });
+  });
+  bind(document.getElementById('volTestBtn'), function() {
+    playSfx('hit');
+    setTimeout(function() { playSfx('win'); }, 180);
+    speakOnly('ทดลองเสียง');
+  });
+  bind(document.getElementById('volCloseBtn'), function() {
+    closeVolumePanel();
+    announce('ปิดตั้งค่าเสียง');
+  });
 }

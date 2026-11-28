@@ -38,6 +38,7 @@ window.onload = function() {
   setupJoystick();
   setupActionButtons();
   if (typeof setupSheetBack === 'function') setupSheetBack();
+  if (typeof setupVolumePanel === 'function') setupVolumePanel();
   setupFocusOnTap();
 
   // ปุ่มเริ่มเกม (ถ้ายังแสดงอยู่)

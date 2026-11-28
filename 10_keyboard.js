@@ -156,7 +156,7 @@ function handleConfirm() {
       showInventory();
     }
   } else if (mode === 'settings') {
-    if (menuOptions[menuCursor]) handleSoundSetting(menuOptions[menuCursor].id);
+    /* ใช้ปุ่ม +/− ในแผงเสียง */
   } else if (mode === 'explore') {
     tryInteract();
   }
@@ -164,9 +164,12 @@ function handleConfirm() {
 
 function handleEsc() {
   if (mode === 'settings') {
-    mode = 'explore';
-    menuOptions = [];
-    if (typeof hideA11yList === 'function') hideA11yList();
+    if (typeof closeVolumePanel === 'function') closeVolumePanel();
+    else {
+      mode = 'explore';
+      menuOptions = [];
+      if (typeof hideA11yList === 'function') hideA11yList();
+    }
     announce('ปิดตั้งค่าเสียง');
   } else if (mode === 'inventory_action' || mode === 'inventory_feed_select' || mode === 'inventory_evo_select') {
     showInventory();

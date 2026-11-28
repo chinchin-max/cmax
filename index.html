@@ -33,6 +33,42 @@
     </div>
   </div>
 
+
+  <!-- แผงปรับเสียงแบบปุ่มตรง (มือถือกดชัวร์) -->
+  <div id="volumePanel" style="display:none;" role="dialog" aria-label="ตั้งค่าเสียง">
+    <div class="vol-head">
+      <div class="vol-title">ตั้งค่าเสียง</div>
+      <button type="button" id="volCloseBtn" class="sheet-back-btn" aria-label="ปิดตั้งค่าเสียง">ปิด</button>
+    </div>
+    <div class="vol-rows">
+      <div class="vol-row">
+        <div class="vol-name" id="volBgmLabel">เพลงพื้นหลัง</div>
+        <div class="vol-btns">
+          <button type="button" class="vol-btn" data-vol="bgm" data-dir="-1" aria-label="ลดเสียงเพลง">−</button>
+          <button type="button" class="vol-btn vol-val" id="volBgmVal" data-vol="bgm" data-dir="1" aria-label="ระดับเสียงเพลง แตะเพื่อเพิ่ม">40%</button>
+          <button type="button" class="vol-btn" data-vol="bgm" data-dir="1" aria-label="เพิ่มเสียงเพลง">+</button>
+        </div>
+      </div>
+      <div class="vol-row">
+        <div class="vol-name" id="volSfxLabel">เสียงเอฟเฟกต์</div>
+        <div class="vol-btns">
+          <button type="button" class="vol-btn" data-vol="sfx" data-dir="-1" aria-label="ลดเสียงเอฟเฟกต์">−</button>
+          <button type="button" class="vol-btn vol-val" id="volSfxVal" data-vol="sfx" data-dir="1" aria-label="ระดับเสียงเอฟเฟกต์ แตะเพื่อเพิ่ม">55%</button>
+          <button type="button" class="vol-btn" data-vol="sfx" data-dir="1" aria-label="เพิ่มเสียงเอฟเฟกต์">+</button>
+        </div>
+      </div>
+      <div class="vol-row">
+        <div class="vol-name" id="volAmbLabel">เสียงบรรยากาศ</div>
+        <div class="vol-btns">
+          <button type="button" class="vol-btn" data-vol="ambient" data-dir="-1" aria-label="ลดเสียงบรรยากาศ">−</button>
+          <button type="button" class="vol-btn vol-val" id="volAmbVal" data-vol="ambient" data-dir="1" aria-label="ระดับเสียงบรรยากาศ แตะเพื่อเพิ่ม">35%</button>
+          <button type="button" class="vol-btn" data-vol="ambient" data-dir="1" aria-label="เพิ่มเสียงบรรยากาศ">+</button>
+        </div>
+      </div>
+      <button type="button" class="vol-test-btn" id="volTestBtn" aria-label="ทดลองเสียงเอฟเฟกต์">ทดลองเสียง</button>
+    </div>
+  </div>
+
   <!-- แผงรายการของแต่ละหน้า (คลัง/ร้าน/ต่อสู้) -->
   <div id="a11yListPanel" style="display:none;" role="region" aria-label="เมนูหน้ารายการ">
     <div class="sheet-header">
