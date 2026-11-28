@@ -112,7 +112,7 @@ function dirFromName(name) {
 function applyDirection(dr, dc) {
   if (mode === 'explore') {
     move(dr, dc);
-  } else if (mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' || mode === 'battle' || mode === 'inventory' || mode === 'inventory_action' || mode === 'inventory_feed_select' || mode === 'inventory_evo_select') {
+  } else if (mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' || mode === 'battle' || mode === 'inventory' || mode === 'inventory_action' || mode === 'inventory_feed_select' || mode === 'inventory_evo_select' || mode === 'settings') {
     // ขึ้น/ซ้าย = ก่อนหน้า, ลง/ขวา = ถัดไป (สะดวกกับ TalkBack)
     if (dr === -1 || dc === -1) menuMove(-1);
     else if (dr === 1 || dc === 1) menuMove(1);
@@ -126,7 +126,7 @@ function startDirHold(dr, dc) {
   // ในเมนู: ไม่เลื่อนค้าง — ให้อ่านทีละรายการชัด ๆ แบบ NVDA
   var inMenu = (mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' ||
     mode === 'battle' || mode === 'inventory' || mode === 'inventory_action' ||
-    mode === 'inventory_feed_select' || mode === 'inventory_evo_select');
+    mode === 'inventory_feed_select' || mode === 'inventory_evo_select' || mode === 'settings');
   if (inMenu) return;
   dirInterval = setInterval(function() {
     if (!dirHold) return;
@@ -174,7 +174,8 @@ function rereadCurrentMenuItem() {
 function isMenuMode() {
   return mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' ||
     mode === 'battle' || mode === 'inventory' || mode === 'inventory_action' ||
-    mode === 'inventory_feed_select' || mode === 'inventory_evo_select';
+    mode === 'inventory_feed_select' || mode === 'inventory_evo_select' ||
+    mode === 'settings';
 }
 
 
@@ -278,6 +279,7 @@ function syncA11yList(titleText, preferFocus) {
             else if (mode === 'inventory_action') renderInvActionMenu(false);
             else if (mode === 'inventory_feed_select') renderFeedSelectMenu(false);
             else if (mode === 'inventory_evo_select') renderEvoSelectMenu(false);
+            else if (mode === 'settings') renderSoundSettings(false);
           } finally {
             window._a11yQuiet = false;
           }
@@ -306,6 +308,7 @@ function syncA11yList(titleText, preferFocus) {
           else if (mode === 'inventory_action') renderInvActionMenu(false);
           else if (mode === 'inventory_feed_select') renderFeedSelectMenu(false);
           else if (mode === 'inventory_evo_select') renderEvoSelectMenu(false);
+          else if (mode === 'settings') renderSoundSettings(false);
           // ยืนยันเลือกรายการนี้
           if (typeof handleConfirm === 'function') handleConfirm();
           // ถ้าจบต่อสู้แล้ว ให้ปิดแผง
@@ -448,17 +451,7 @@ function setupActionButtons() {
         if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
       } else if (action === 'm' || action === 'tab-more') {
         setActiveTab('more');
-        announce(
-          "=== เมนู ===\n\n" +
-          "แผนที่ = เดินสำรวจ\n" +
-          "คลัง = ดูไอเทมและสัตว์เลี้ยง\n" +
-          "ค้นหา = หาสัตว์ป่า (นอกเมือง)\n" +
-          "ในเมือง เดินไปหน้าร้านแล้วกดยืนยัน\n\n" +
-          "ร้านลูกบอล แถว 49 หลัก 51\n" +
-          "ร้านอาหาร แถว 51 หลัก 49\n" +
-          "ร้านหิน แถว 53 หลัก 51\n" +
-          "ลานประลอง แถว 51 หลัก 51"
-        );
+        openSoundSettings();
       }
       // หลังใช้คำสั่ง: เดสก์ท็อปดึงโฟกัสกลับเกม / มือถือปล่อยไว้ที่ปุ่ม (TalkBack)
       if (!isTouchDevice()) {
@@ -482,4 +475,83 @@ function setupSheetBack() {
     if (typeof handleEsc === 'function') handleEsc();
     if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
   });
+}
+
+
+// ===== เมนูตั้งค่าเสียง =====
+function openSoundSettings() {
+  mode = 'settings';
+  menuCursor = 0;
+  menuTitle = 'ตั้งค่าเสียง';
+  buildSoundSettingsOptions();
+  renderSoundSettings(true);
+  if (typeof enterListNavigation === 'function') enterListNavigation('ตั้งค่าเสียง');
+  else if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
+}
+
+function buildSoundSettingsOptions() {
+  menuOptions = [
+    { id: 'bgm', label: 'เพลงพื้นหลัง: ' + volumeLabel(audioSettings.bgm), speak: 'เพลงพื้นหลัง. ' + volumeLabel(audioSettings.bgm) + '. แตะเพื่อเปลี่ยนระดับ' },
+    { id: 'sfx', label: 'เสียงเอฟเฟกต์: ' + volumeLabel(audioSettings.sfx), speak: 'เสียงเอฟเฟกต์. ' + volumeLabel(audioSettings.sfx) + '. แตะเพื่อเปลี่ยนระดับ' },
+    { id: 'ambient', label: 'เสียงบรรยากาศ: ' + volumeLabel(audioSettings.ambient), speak: 'เสียงบรรยากาศ. ' + volumeLabel(audioSettings.ambient) + '. แตะเพื่อเปลี่ยนระดับ' },
+    { id: 'test', label: 'ทดลองเสียงเอฟเฟกต์', speak: 'ทดลองเสียงเอฟเฟกต์' },
+    { id: 'back', label: 'กลับ', speak: 'กลับ' }
+  ];
+}
+
+function renderSoundSettings(isOpen) {
+  var t = '=== ตั้งค่าเสียง ===\n\n';
+  menuOptions.forEach(function(opt, i) {
+    t += (i === menuCursor ? '▶ ' : '  ') + opt.label + '\n';
+  });
+  t += '\nแตะรายการเพื่อปรับระดับ · กลับเพื่อออก';
+  announce(t, false);
+  if (menuOptions[menuCursor]) {
+    var line = menuOptions[menuCursor].speak || menuOptions[menuCursor].label;
+    if (isOpen) speakOnly('ตั้งค่าเสียง. ' + line);
+    else speakOnly(line);
+  }
+  if (typeof syncA11yList === 'function') syncA11yList('ตั้งค่าเสียง', !!isOpen);
+}
+
+function handleSoundSetting(id) {
+  if (id === 'bgm') {
+    audioSettings.bgm = nextVolume(audioSettings.bgm);
+    applyAudioSettings();
+    saveAudioSettings();
+    if (typeof startBGM === 'function') startBGM();
+    playSfx('menu');
+    buildSoundSettingsOptions();
+    renderSoundSettings(false);
+    if (typeof syncA11yList === 'function') syncA11yList('ตั้งค่าเสียง', true);
+    speakOnly('เพลงพื้นหลัง. ' + volumeLabel(audioSettings.bgm));
+  } else if (id === 'sfx') {
+    audioSettings.sfx = nextVolume(audioSettings.sfx);
+    applyAudioSettings();
+    saveAudioSettings();
+    playSfx('confirm');
+    buildSoundSettingsOptions();
+    renderSoundSettings(false);
+    if (typeof syncA11yList === 'function') syncA11yList('ตั้งค่าเสียง', true);
+    speakOnly('เสียงเอฟเฟกต์. ' + volumeLabel(audioSettings.sfx));
+  } else if (id === 'ambient') {
+    audioSettings.ambient = nextVolume(audioSettings.ambient);
+    applyAudioSettings();
+    saveAudioSettings();
+    playSfx('menu');
+    buildSoundSettingsOptions();
+    renderSoundSettings(false);
+    if (typeof syncA11yList === 'function') syncA11yList('ตั้งค่าเสียง', true);
+    speakOnly('เสียงบรรยากาศ. ' + volumeLabel(audioSettings.ambient));
+  } else if (id === 'test') {
+    playSfx('hit');
+    setTimeout(function() { playSfx('win'); }, 200);
+    speakOnly('ทดลองเสียง');
+  } else if (id === 'back') {
+    mode = 'explore';
+    menuOptions = [];
+    if (typeof hideA11yList === 'function') hideA11yList();
+    if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
+    announce('ปิดตั้งค่าเสียง');
+  }
 }

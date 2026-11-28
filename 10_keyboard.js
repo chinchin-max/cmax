@@ -53,6 +53,7 @@ window.addEventListener('keydown', function(e) {
     else if (code === 'KeyR') showArena();
     else if (code === 'KeyI') showInventory();
     else if (code === 'KeyM') {
+      if (typeof openSoundSettings === 'function') { openSoundSettings(); return; }
       announce(
         "=== เมนูช่วยเหลือ ===\n\n" +
         "ลูกศร / WASD = เดิน (หน้าสำรวจ)\n" +
@@ -74,7 +75,7 @@ window.addEventListener('keydown', function(e) {
       );
     }
   }
-  else if (mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' || mode === 'battle' || mode === 'inventory' || mode === 'inventory_action' || mode === 'inventory_feed_select' || mode === 'inventory_evo_select') {
+  else if (mode === 'shop' || mode === 'catch_select' || mode === 'arena_select' || mode === 'battle' || mode === 'inventory' || mode === 'inventory_action' || mode === 'inventory_feed_select' || mode === 'inventory_evo_select' || mode === 'settings') {
     if (code === 'ArrowUp' || code === 'KeyW') {
       menuMove(-1);
       e.preventDefault();
@@ -154,13 +155,20 @@ function handleConfirm() {
       evolvePet(menuOptions[menuCursor].id);
       showInventory();
     }
+  } else if (mode === 'settings') {
+    if (menuOptions[menuCursor]) handleSoundSetting(menuOptions[menuCursor].id);
   } else if (mode === 'explore') {
     tryInteract();
   }
 }
 
 function handleEsc() {
-  if (mode === 'inventory_action' || mode === 'inventory_feed_select' || mode === 'inventory_evo_select') {
+  if (mode === 'settings') {
+    mode = 'explore';
+    menuOptions = [];
+    if (typeof hideA11yList === 'function') hideA11yList();
+    announce('ปิดตั้งค่าเสียง');
+  } else if (mode === 'inventory_action' || mode === 'inventory_feed_select' || mode === 'inventory_evo_select') {
     showInventory();
   } else if (mode === 'catch_select') {
     if (typeof endBattleToExplore === 'function') endBattleToExplore();

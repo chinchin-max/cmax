@@ -97,6 +97,8 @@ function menuMove(delta) {
     renderFeedSelectMenu();
   } else if (mode === 'inventory_evo_select') {
     renderEvoSelectMenu();
+  } else if (mode === 'settings') {
+    renderSoundSettings();
   }
   if (typeof updateMobileControlsForMode === 'function') updateMobileControlsForMode();
   // อัปเดตไฮไลต์ในลิสต์ แต่ไม่แย่งโฟกัส (ปุ่มทิศทางใช้ speakOnly แล้ว)

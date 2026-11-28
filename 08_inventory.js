@@ -363,7 +363,8 @@ function startBGM() {
   try {
     if (!bgm) return;
     bgm.loop = true;
-    if (bgm.volume > 0.45) bgm.volume = 0.4;
+    if (typeof audioSettings !== 'undefined') bgm.volume = audioSettings.bgm;
+    else if (bgm.volume > 0.45) bgm.volume = 0.4;
     var p = bgm.play();
     if (p && typeof p.then === 'function') {
       p.then(function() { bgmStarted = true; }).catch(function() {

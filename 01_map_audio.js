@@ -60,6 +60,79 @@ sounds.forest.loop = true; sounds.forest.volume = 0.42;
   if (sounds[k]) sounds[k].volume = 0.65;
 });
 
+// ===== ระดับเสียง (บันทึก localStorage) =====
+const STORAGE_KEY_VOLUME = 'tri_monster_volume_v1';
+const VOLUME_STEPS = [0, 0.25, 0.5, 0.75, 1];
+const VOLUME_LABELS = ['ปิด', 'เบา', 'ปานกลาง', 'ค่อนข้างดัง', 'ดังสุด'];
+
+var audioSettings = {
+  bgm: 0.4,
+  sfx: 0.55,
+  ambient: 0.35
+};
+
+function loadAudioSettings() {
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY_VOLUME);
+    if (!raw) return;
+    var o = JSON.parse(raw);
+    if (typeof o.bgm === 'number') audioSettings.bgm = o.bgm;
+    if (typeof o.sfx === 'number') audioSettings.sfx = o.sfx;
+    if (typeof o.ambient === 'number') audioSettings.ambient = o.ambient;
+  } catch (e) {}
+}
+
+function saveAudioSettings() {
+  try {
+    localStorage.setItem(STORAGE_KEY_VOLUME, JSON.stringify(audioSettings));
+  } catch (e) {}
+}
+
+function volumeLabel(v) {
+  var best = 0, bestDiff = 99;
+  for (var i = 0; i < VOLUME_STEPS.length; i++) {
+    var d = Math.abs(VOLUME_STEPS[i] - v);
+    if (d < bestDiff) { bestDiff = d; best = i; }
+  }
+  return VOLUME_LABELS[best] + ' ' + Math.round(v * 100) + '%';
+}
+
+function nextVolume(v) {
+  var idx = 0, bestDiff = 99;
+  for (var i = 0; i < VOLUME_STEPS.length; i++) {
+    var d = Math.abs(VOLUME_STEPS[i] - v);
+    if (d < bestDiff) { bestDiff = d; idx = i; }
+  }
+  return VOLUME_STEPS[(idx + 1) % VOLUME_STEPS.length];
+}
+
+function applyAudioSettings() {
+  try {
+    if (bgm) bgm.volume = audioSettings.bgm;
+  } catch (e) {}
+  Object.keys(sounds).forEach(function(k) {
+    var item = sounds[k];
+    if (k === 'ocean' || k === 'forest') {
+      if (item) item.volume = audioSettings.ambient;
+      return;
+    }
+    if (Array.isArray(item)) {
+      item.forEach(function(s) { s.volume = audioSettings.sfx * 0.85; });
+    } else if (item) {
+      item.volume = audioSettings.sfx;
+    }
+  });
+  // บางเสียงดังหน่อยตามเดิม
+  ['encounter','win','evolve','catch_ok'].forEach(function(k) {
+    if (sounds[k]) sounds[k].volume = Math.min(1, audioSettings.sfx * 1.15);
+  });
+}
+
+loadAudioSettings();
+applyAudioSettings();
+
+
+
 function playSfx(key) {
   const s = sounds[key];
   if (!s) return;
